@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>M01 · L03 — Text Files &amp; I/O Redirection | Linux Internals</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg-blackboard: #0a0e14;
+    --chalk-white:  #f1f2f6;
+    --chalk-yellow: #feca57;
+    --chalk-blue:   #48dbfb;
+    --chalk-green:  #1dd1a1;
+    --chalk-pink:   #ff9ff3;
+    --chalk-orange: #ff9f43;
+    --chalk-red:    #ff6b6b;
+    --wood-frame:   #2f3542;
+    --surface:      rgba(255,255,255,0.04);
+  }
+  @media print {
+    body { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; background:var(--bg-blackboard)!important; }
+    .blackboard { border:none!important; box-shadow:none!important; width:100%!important; margin:0!important; padding:10px!important; }
+    section { page-break-inside:avoid; }
+    .tab-nav { display:none!important; }
+    .tab-pane { display:block!important; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg-blackboard); color:var(--chalk-white); font-family:'Inter',sans-serif; padding:20px; }
+  .blackboard { max-width:1000px; margin:0 auto; border:12px solid var(--wood-frame); padding:50px; box-shadow:0 30px 60px rgba(0,0,0,.8); background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px); background-size:30px 30px; }
+
+  /* AUTHOR HEADER */
+  .author-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--chalk-yellow); padding-bottom:20px; margin-bottom:40px; }
+  .author-info h2 { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:1.8rem; }
+  .author-info p  { font-family:'Architects Daughter'; color:var(--chalk-white); font-size:1.1rem; margin-top:5px; }
+  .author-contact { text-align:right; font-family:'Fira Code',monospace; font-size:.82rem; color:var(--chalk-blue); }
+  .author-contact a { color:var(--chalk-blue); text-decoration:none; }
+  .contact-item { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:4px; }
+
+  /* PAGE TITLE */
+  h1 { font-family:'Architects Daughter',cursive; font-size:3.2rem; text-align:center; color:var(--chalk-yellow); text-transform:uppercase; margin-bottom:5px; }
+  .subtitle { text-align:center; color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1.4rem; margin-bottom:16px; }
+  .meta-badges { display:flex; justify-content:center; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
+  .badge { font-family:'Fira Code',monospace; font-size:.78rem; padding:4px 12px; border-radius:20px; border:1px solid; }
+  .badge-mod { border-color:var(--chalk-yellow); color:var(--chalk-yellow); }
+  .badge-time { border-color:var(--chalk-blue); color:var(--chalk-blue); }
+  .badge-status { border-color:var(--chalk-green); color:var(--chalk-green); }
+
+  /* TABS */
+  .tab-nav { display:flex; gap:0; margin-bottom:40px; border:2px solid var(--wood-frame); border-radius:12px; overflow:hidden; }
+  .tab-btn { flex:1; padding:14px 20px; font-family:'Architects Daughter',cursive; font-size:1.1rem; background:transparent; color:var(--chalk-white); border:none; cursor:pointer; border-right:2px solid var(--wood-frame); transition:all .2s; }
+  .tab-btn:last-child { border-right:none; }
+  .tab-btn:hover { background:rgba(255,255,255,.06); }
+  .tab-btn.active { background:rgba(254,202,87,.1); color:var(--chalk-yellow); }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; }
+
+  /* SHARED */
+  h2, h3, .handwritten, .speech-bubble, .topic-title { font-family:'Architects Daughter',cursive; }
+  section { margin-bottom:70px; padding-bottom:40px; border-bottom:2px dashed rgba(255,255,255,.1); }
+  section:last-of-type { border-bottom:none; }
+  .topic-title { color:var(--chalk-pink); font-size:2rem; margin-bottom:28px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+  .content-box { background:var(--surface); padding:25px; border-radius:15px; border:2px solid transparent; margin-bottom:20px; }
+  ul { list-style:none; padding-left:0; }
+  li { margin-bottom:13px; padding-left:28px; position:relative; }
+  li::before { content:'→'; position:absolute; left:0; color:var(--chalk-blue); }
+
+  /* CHARACTERS */
+  .doodle-container { display:flex; align-items:center; gap:28px; margin:28px 0; }
+  .doodle-container.right { justify-content:flex-end; margin-top:14px; }
+  .doodle-wrapper { display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .char-name { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:.9rem; }  .golu { width:60px; height:100px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .golu-img { width:60px; height:100px; object-fit:cover; object-position:center 20%; border-radius:10px; border:2.5px solid var(--chalk-green); box-shadow:0 0 12px rgba(29,209,161,.2); }
+  .jagu { width:70px; height:110px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .jagu-img { width:70px; height:100px; object-fit:cover; object-position:center 15%; border-radius:10px; border:2.5px solid var(--chalk-blue); box-shadow:0 0 12px rgba(72,219,251,.2); }
+
+  .speech-bubble { border:2px solid var(--chalk-white); border-radius:25px; padding:18px 26px; position:relative; max-width:72%; font-family:'Architects Daughter',cursive; font-size:1.2rem; line-height:1.5; }
+  .speech-bubble::before { content:''; position:absolute; left:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-right:14px solid var(--chalk-white); }
+  .speech-bubble.flip::before { display:none; }
+  .speech-bubble.flip::after { content:''; position:absolute; right:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-left:14px solid var(--chalk-white); }
+  .chalk-text { color:var(--chalk-yellow); font-weight:bold; }
+
+  /* INTRO */
+  .intro-banner { border:4px solid var(--chalk-yellow); padding:28px; border-radius:20px; margin-bottom:36px; background:rgba(254,202,87,.05); }
+
+  /* STATS */
+  .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; text-align:center; margin:20px 0; }
+  .stat-val { font-family:'Architects Daughter'; font-size:2.6rem; }
+  .stat-lbl { font-family:'Architects Daughter'; color:var(--chalk-blue); margin-top:4px; font-size:.95rem; }
+
+  /* DIAGRAM */
+  .diagram-container { border:3px solid var(--chalk-white); border-radius:25px; padding:36px; text-align:center; background:rgba(0,0,0,.5); margin:28px 0; }
+  .boot-chain { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:5px; }
+  .boot-node { font-family:'Architects Daughter'; font-size:.9rem; padding:8px 13px; border-radius:10px; border:2px solid; white-space:nowrap; }
+  .boot-arr { color:var(--chalk-yellow); font-size:1.2rem; }
+
+  /* TOPIC FLOW */
+  .topic-flow { display:flex; flex-direction:column; }
+  .tf-row { display:flex; align-items:flex-start; gap:14px; }
+  .tf-spine { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+  .tf-dot { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:.85rem; font-weight:700; }
+  .tf-line { width:2px; min-height:20px; flex:1; margin:3px 0; background:rgba(255,255,255,.1); }
+  .tf-body { padding:2px 0 18px; flex:1; }
+  .tf-body h4 { font-family:'Architects Daughter'; font-size:1.1rem; margin-bottom:3px; }
+  .tf-body p  { font-size:.86rem; color:rgba(255,255,255,.55); line-height:1.5; }
+
+  /* VS */
+  .vs-row { display:flex; align-items:center; gap:14px; margin:20px 0; }
+  .vs-circle { width:52px; height:52px; border:3px solid var(--chalk-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:1.3rem; color:var(--chalk-orange); flex-shrink:0; }
+
+  /* STEP BADGE */
+  .step-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:20px; padding:4px 14px; font-family:'Fira Code',monospace; font-size:.76rem; color:var(--chalk-blue); margin-bottom:16px; }
+
+  /* MISTAKE */
+  .mistake-pair { margin-bottom:22px; }
+  .m-label { font-family:'Architects Daughter'; font-size:1rem; margin-bottom:7px; color:var(--chalk-orange); }
+  .m-block { border-radius:10px; padding:12px 16px; margin-top:5px; }
+  .m-wrong { background:rgba(255,107,107,.07); border:1px solid rgba(255,107,107,.3); }
+  .m-right { background:rgba(29,209,161,.07); border:1px solid rgba(29,209,161,.3); }
+  .m-block code { font-family:'Fira Code',monospace; font-size:.8rem; color:var(--chalk-white); display:block; white-space:pre; }
+
+  /* CODE */
+  pre { background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:18px 20px; overflow-x:auto; margin:12px 0; position:relative; }
+  pre code { font-family:'Fira Code',monospace; font-size:.8rem; line-height:1.7; color:var(--chalk-white); }
+  .copy-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.13); color:rgba(255,255,255,.45); padding:3px 10px; border-radius:6px; font-family:'Fira Code',monospace; font-size:.7rem; cursor:pointer; transition:all .15s; }
+  .copy-btn:hover { background:rgba(254,202,87,.2); color:var(--chalk-yellow); border-color:var(--chalk-yellow); }
+  .copy-btn.done { background:rgba(29,209,161,.2); color:var(--chalk-green); border-color:var(--chalk-green); }
+  .cm  { color:#546e7a; }
+  .cmd { color:var(--chalk-blue); }
+  .flg { color:var(--chalk-pink); }
+  .str { color:var(--chalk-green); }
+
+  /* INTERVIEW Q */
+  .iq { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .iq-q { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; cursor:pointer; }
+  .iq-q:hover { background:rgba(255,255,255,.03); }
+  .iq-num { width:28px; height:28px; border-radius:50%; background:rgba(72,219,251,.13); color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+  .iq-text { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; line-height:1.4; }
+  .iq-arr { color:rgba(255,255,255,.28); font-size:.9rem; transition:transform .2s; margin-top:4px; }
+  .iq.open .iq-arr { transform:rotate(180deg); }
+  .iq-a { display:none; padding:0 20px 16px 60px; font-size:.88rem; color:rgba(255,255,255,.62); line-height:1.65; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; margin-top:-1px; }
+  .iq.open .iq-a { display:block; }
+
+  /* CLOSING CARDS */
+  .closing-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+  .cc { background:var(--surface); border:2px solid; border-radius:16px; padding:18px 20px; }
+  .cc .icon { font-size:1.5rem; margin-bottom:7px; }
+  .cc .title { font-family:'Architects Daughter'; font-size:1.05rem; margin-bottom:6px; }
+  .cc .body  { font-size:.86rem; color:rgba(255,255,255,.68); line-height:1.6; }
+  .cc.takeaway  { border-color:var(--chalk-yellow); }
+  .cc.interview { border-color:var(--chalk-blue); }
+  .cc.assign    { border-color:var(--chalk-green); }
+  .cc.challenge { border-color:var(--chalk-orange); }
+  .cc.mistake   { border-color:var(--chalk-red); }
+  .cc.protip    { border-color:var(--chalk-pink); }
+
+  /* CHEAT TABLE */
+  .cmd-table { width:100%; border-collapse:collapse; margin:14px 0; }
+  .cmd-table th { color:var(--chalk-yellow); border-bottom:2px solid var(--chalk-yellow); text-align:left; padding:10px 12px; font-family:'Architects Daughter'; font-size:1rem; }
+  .cmd-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.07); font-size:.81rem; vertical-align:top; }
+  .cmd-table td:first-child { font-family:'Fira Code',monospace; color:var(--chalk-blue); white-space:nowrap; }
+  .cmd-table td:last-child  { color:rgba(255,255,255,.58); }
+  .cs-title { font-family:'Architects Daughter'; color:var(--chalk-pink); font-size:1.5rem; margin:32px 0 8px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+
+  /* LAB */
+  .lab-step { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:20px 22px; margin-bottom:13px; }
+  .lab-hdr { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .lab-num { width:30px; height:30px; border-radius:50%; background:rgba(254,202,87,.13); color:var(--chalk-yellow); font-family:'Architects Daughter'; font-size:1.1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .lab-title { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; }
+  .lab-chk { width:18px; height:18px; accent-color:var(--chalk-green); cursor:pointer; }
+  .accept { background:rgba(29,209,161,.05); border:1px solid rgba(29,209,161,.28); border-radius:9px; padding:10px 14px; margin-top:9px; font-size:.83rem; color:var(--chalk-green); }
+  .lab-prog-wrap { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:16px 20px; display:flex; align-items:center; gap:14px; margin-top:10px; }
+  .lab-bar { flex:1; height:6px; background:rgba(255,255,255,.09); border-radius:3px; }
+  .lab-fill { height:100%; background:linear-gradient(90deg,var(--chalk-green),var(--chalk-blue)); border-radius:3px; width:0; transition:width .3s; }
+
+  /* FOOTER */
+  .footer { text-align:center; color:#555; margin-top:60px; font-family:'Architects Daughter'; border-top:1px solid rgba(255,255,255,.09); padding-top:20px; }
+  .footer a { color:var(--chalk-blue); text-decoration:none; font-family:'Fira Code'; font-size:.85rem; }
+
+  
+  /* LESSON NAVIGATION */
+  .lesson-nav { margin-top:40px; padding-top:20px; border-top:2px solid rgba(255,255,255,.09); }
+  .nav-inner { display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap; }
+  .nav-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:10px; font-family:'Architects Daughter',cursive; font-size:.92rem; text-decoration:none; transition:all .15s; border:1px solid rgba(255,255,255,.12); color:var(--chalk-white); background:var(--surface); white-space:nowrap; }
+  .nav-btn:hover { border-color:var(--chalk-yellow); color:var(--chalk-yellow); background:rgba(254,202,87,.06); transform:translateY(-1px); }
+  .nav-btn.up { border-color:rgba(72,219,251,.2); color:var(--chalk-blue); }
+  .nav-btn.up:hover { border-color:var(--chalk-blue); background:rgba(72,219,251,.06); }
+  .nav-btn.prev { border-color:rgba(255,255,255,.1); }
+  .nav-btn.next { border-color:rgba(255,255,255,.1); }
+  .nav-btn.disabled { opacity:.3; pointer-events:none; border-color:transparent; background:transparent; }
+  @media(max-width:680px) {
+    .nav-inner { flex-direction:column; align-items:stretch; }
+    .nav-btn { justify-content:center; }
+  }
+
+  /* BACK TO TOP floating button */
+  .to-top { position:fixed; bottom:30px; right:30px; width:48px; height:48px; border-radius:50%; background:var(--chalk-yellow); color:#0a0e14; border:none; cursor:pointer; font-size:1.3rem; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:all .25s ease; z-index:1000; box-shadow:0 4px 16px rgba(254,202,87,.25); }
+  .to-top.visible { opacity:1; visibility:visible; }
+  .to-top:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(254,202,87,.35); }
+  @media(max-width:680px) {
+    .to-top { bottom:16px; right:16px; width:42px; height:42px; font-size:1.1rem; }
+  }
+
+
+@media(max-width:680px) {
+    .blackboard { padding:22px 16px; }
+    h1 { font-size:2.1rem; }
+    .closing-grid,.stat-row { grid-template-columns:1fr; }
+    .author-header { flex-direction:column; gap:14px; }
+    .author-contact { text-align:left; }
+    .vs-row { flex-direction:column; }
+    .boot-chain { flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="blackboard">
+
+<!-- AUTHOR HEADER -->
+<header class="author-header">
+  <div class="author-info">
+    <h2>Aryashree Pritikrishna</h2>
+    <p>AI Powered DevOps &amp; Platform Engineering</p>
+  </div>
+  <div class="author-contact">
+    <div class="contact-item">&#128188; <a href="https://www.linkedin.com/in/aryashreepritikrishna/">linkedin.com/in/aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128250; <a href="https://www.youtube.com/@aryashreepritikrishna">youtube.com/@aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128231; <a href="mailto:aryashreep@gmail.com">aryashreep@gmail.com</a></div>
+  </div>
+</header>
+
+<!-- PAGE TITLE -->
+<header>
+  <h1>Text Files &amp; I/O Redirection</h1>
+  <p class="subtitle">M01 · U01 · L03 — Linux Internals Day 3</p>
+  <div class="meta-badges">
+    <span class="badge badge-mod">M01 · Linux Foundations</span>
+    <span class="badge badge-time">&#9201; 45 min</span>
+    <span class="badge badge-status">&#9679; Live</span>
+  </div>
+</header>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('lesson',this)">&#128214; Lesson</button>
+  <button class="tab-btn" onclick="switchTab('cheatsheet',this)">&#128203; Cheat Sheet</button>
+  <button class="tab-btn" onclick="switchTab('lab',this)">&#129514; Lab</button>
+</div>
+
+<!-- ══════════════ TAB 1 — LESSON ══════════════ -->
+<div class="tab-pane active" id="tab-lesson">
+
+<!-- ① INTRO DIALOGUE -->
+<section>
+  <div class="intro-banner">
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"Jagu, there's a <span class="chalk-text">2GB log file</span> in production and something crashed! How do I find where the error is?? These files won't even open!"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"Golu, <span class="chalk-text">text manipulation is a DevOps superpower.</span> Don't cat it — start with tail -f. After today, you'll scan a 2GB log in 10 seconds!"</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="content-box" style="margin-top:20px;border-left:4px solid var(--chalk-yellow);">
+      <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:9px;">What we learn today</h3>
+      <p class="handwritten" style="font-size:1.1rem;">Reading large files, redirecting output, building text pipelines, and <b>in-place editing with sed</b> — together these form a Linux engineer's daily toolkit.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ② LEARNING OBJECTIVES -->
+<section>
+  <div class="topic-title">&#127919; Learning Objectives</div>
+  <div class="content-box" style="border-left:5px solid var(--chalk-green);">
+    <ul>
+      <li><strong>Read large files</strong> without crashing your terminal — cat, head, tail, less</li>
+      <li><strong>Redirect output</strong> to files, append, split streams — &gt;, &gt;&gt;, 2&gt;&amp;1, /dev/null</li>
+      <li><strong>Process text pipelines</strong> with grep, wc, sort, uniq, cut</li>
+      <li><strong>Edit files in-place</strong> with sed substitutions and line deletions</li>
+    </ul>
+    <p class="handwritten" style="color:var(--chalk-red);margin-top:14px;font-size:1.1rem;">
+      &#128161; <span class="chalk-text">Why it matters:</span> Because every DevOps task — log analysis, config management, CI pipelines — runs on text files. Without these commands, your infrastructure is blind.
+    </p>
+  </div>
+</section>
+
+<!-- ③ STORY -->
+<section>
+  <div class="step-badge">&#9313; Story · 2 min</div>
+  <div class="topic-title">&#128214; The 2GB Log Incident</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);">
+    <p class="handwritten" style="font-size:1.2rem;line-height:1.75;">
+      It was <span class="chalk-text">11:47 PM</span>. Payment service response time hit 8 seconds. SLO breach. Alert fired.
+      The log file was <code style="font-family:'Fira Code';color:var(--chalk-blue)">app.log</code> — size <span class="chalk-text">2.1 GB</span>.
+    </p>
+    <p style="font-size:.93rem;color:rgba(255,255,255,.7);margin-top:14px;line-height:1.7;">
+      The junior engineer ran <code style="font-family:'Fira Code';color:var(--chalk-red)">cat app.log</code> — terminal froze. The senior quietly typed:
+      <code style="font-family:'Fira Code';color:var(--chalk-blue)">tail -f app.log | grep -i "timeout" | tee live_errors.txt</code>
+      — 15 seconds later: root cause found. Downstream DB connection pool exhausted. Ticket closed. Sleep.
+    </p>
+    <p style="font-size:.9rem;color:var(--chalk-green);margin-top:12px;font-style:italic;">
+      After today, you'll be that senior engineer. &#127919;
+    </p>
+  </div>
+</section>
+
+<!-- ④ REAL-WORLD PROBLEM + TOPIC FLOW -->
+<section>
+  <div class="step-badge">&#9314; Real-world Problem · 3 min</div>
+  <div class="topic-title">&#10071; Topic Flow &amp; Real Impact</div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:16px;">Topic Flow — Lesson Roadmap</h3>
+    <div class="topic-flow">
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,107,107,.14);color:var(--chalk-red)">P</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-red)">Problem</h4><p>2GB log file — where do you even start grepping?</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">S</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Story</h4><p>tail -f + grep + tee caught the error in 15 seconds during a live incident.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,67,.14);color:var(--chalk-orange)">V</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-orange)">Visualization</h4><p>I/O stream flow: stdin(0) → Command → stdout(1) + stderr(2). House analogy: clean drain vs sewage.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,243,.14);color:var(--chalk-pink)">T</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-pink)">Theory</h4><p>4 pillars: Reading (cat/head/tail/less), Redirection (&gt;/&gt;&gt;/|/tee/2&gt;&amp;1), Searching (grep/wc/sort), Editing (sed).</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(29,209,161,.14);color:var(--chalk-green)">H</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-green)">Hands-on</h4><p>Generate fake logs + tail -f, grep /etc/passwd, wc/sort/uniq pipeline, sed substitution with -i.bak backup.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">B</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-yellow)">Best Practice</h4><p>sed -i.bak always use backup. &gt;&gt; over &gt; for logs. less over cat for big files. tee to capture + display.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">I</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Interview</h4><p>What does pipe do? grep -v vs grep? &gt; vs &gt;&gt;? sed -i? Asked in EVERY DevOps interview.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">A</div></div><div class="tf-body" style="padding-bottom:0"><h4 style="color:var(--chalk-yellow)">Assignment</h4><p>Analyze /var/log/syslog — wc, grep, sort, uniq, tee — full pipeline.</p></div></div>
+    </div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-red);">
+    <h3 class="handwritten" style="color:var(--chalk-red);margin-bottom:13px;">What breaks without text tools?</h3>
+    <ul>
+      <li>cat on 2GB file — <strong>terminal freeze</strong>, and your team won't know why</li>
+      <li>No grep — <strong>manually scrolling</strong> through millions of lines</li>
+      <li>Not knowing <strong>&gt; vs &gt;&gt;</strong> — <strong>important configs get overwritten</strong> accidentally</li>
+      <li>No sed — you'll have to <strong>open an editor for mass config changes</strong> across 50 servers</li>
+      <li>No pipes — you'll need <strong>5 temporary files</strong> for what should be a one-liner</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ⑤ THEORY -->
+<section>
+  <div class="step-badge">&#9315; Theory · 8 min</div>
+  <div class="topic-title">&#128204; Four Pillars: Read, Redirect, Search, Edit</div>
+
+  <div class="stat-row">
+    <div><div class="stat-val" style="color:var(--chalk-yellow)">|</div><div class="stat-lbl">Pipe = Unix's greatest invention</div></div>
+    <div><div class="stat-val" style="color:var(--chalk-pink)">2&gt;&amp;1</div><div class="stat-lbl">Merge stderr into stdout</div></div>
+    <div><div class="stat-val" style="color:var(--chalk-green)">sed</div><div class="stat-lbl">Stream EDitor — in-place magic</div></div>
+  </div>
+
+  <!-- READING -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);margin-top:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-blue);margin-bottom:12px;">&#128196; Reading Files — Choose the Right Tool</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-blue);margin-bottom:6px;">cat</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.6);line-height:1.6;">Small files only (configs, scripts). Prints the entire file at once. <span style="color:var(--chalk-red)">Never use on a 2GB file.</span></div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-yellow);margin-bottom:6px;">head -20</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.6);line-height:1.6;">First N lines. Useful for checking CSV headers or verifying file format. Default is 10 lines.</div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-green);margin-bottom:6px;">tail -f</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.6);line-height:1.6;"><strong style="color:var(--chalk-green)">Live follow.</strong> Watch log files in real-time. The #1 incident response tool. Exit with Ctrl+C.</div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-pink);margin-bottom:6px;">less</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.6);line-height:1.6;">Paginate large files. Search with /pattern, n for next match, q to quit. <span style="color:var(--chalk-green)">Memory-safe.</span></div>
+      </div>
+    </div>
+    <pre><code><span class="cm"># cat — small configs only</span>
+<span class="cmd">cat</span> /etc/hostname
+<span class="cmd">cat</span> /etc/hosts
+
+<span class="cm"># head — first N lines</span>
+<span class="cmd">head</span> <span class="flg">-20</span> /var/log/syslog
+
+<span class="cm"># tail — last N lines, or LIVE follow</span>
+<span class="cmd">tail</span> <span class="flg">-50</span> /var/log/syslog
+<span class="cmd">tail</span> <span class="flg">-f</span> /var/log/syslog          <span class="cm"># live stream</span>
+
+<span class="cm"># less — safe for any size</span>
+<span class="cmd">less</span> /var/log/syslog              <span class="cm"># /ERROR to search, q to quit</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- REDIRECTION -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);margin-top:15px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:12px;">&#8618; Redirection — Control Your Streams</h3>
+    <div class="diagram-container" style="margin:0 0 16px;">
+      <p class="handwritten" style="color:var(--chalk-pink);font-size:1.1rem;margin-bottom:14px;">I/O Stream Flow</p>
+      <div class="boot-chain">
+        <span class="boot-node" style="border-color:var(--chalk-blue);color:var(--chalk-blue)">stdin (0)</span>
+        <span class="boot-arr">&#8594;</span>
+        <span class="boot-node" style="border-color:var(--chalk-yellow);color:var(--chalk-yellow)">Command</span>
+        <span class="boot-arr">&#8594;</span>
+        <span class="boot-node" style="border-color:var(--chalk-green);color:var(--chalk-green)">stdout (1)</span>
+        <span class="boot-arr">&#8594;</span>
+        <span class="boot-node" style="border-color:var(--chalk-white)">file / pipe</span>
+      </div>
+      <div style="margin-top:10px;">
+        <span class="boot-node" style="border-color:var(--chalk-red);color:var(--chalk-red)">stderr (2)</span>
+        <span style="color:var(--chalk-yellow);margin:0 6px;">&#8594; 2&gt;&amp;1 &#8594;</span>
+        <span class="boot-node" style="border-color:var(--chalk-green);color:var(--chalk-green)">stdout (1)</span>
+        <span style="color:var(--chalk-yellow);margin:0 6px;">or</span>
+        <span class="boot-node" style="border-color:rgba(255,255,255,.3);">/dev/null</span>
+      </div>
+    </div>
+    <pre><code><span class="cm"># > overwrite (DANGEROUS — wipes the file!)</span>
+<span class="cmd">echo</span> <span class="str">"hello"</span> > output.txt
+
+<span class="cm"># >> append (SAFE — adds to the end of the file)</span>
+<span class="cmd">echo</span> <span class="str">"world"</span> >> output.txt
+
+<span class="cm"># | pipe — one command's output is another's input</span>
+<span class="cmd">cat</span> /etc/passwd | <span class="cmd">grep</span> <span class="str">"root"</span>
+
+<span class="cm"># tee — write to stdout AND file simultaneously</span>
+<span class="cmd">tail</span> <span class="flg">-f</span> app.log | <span class="cmd">tee</span> live_capture.txt
+
+<span class="cm"># 2>&1 — merge stderr into stdout</span>
+<span class="cmd">ls</span> /nonexistent 2>&1 | <span class="cmd">tee</span> errors.log
+
+<span class="cm"># /dev/null — discard output (silence)</span>
+<span class="cmd">cron_script.sh</span> > /dev/null 2>&1</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- SEARCHING -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);margin-top:15px;">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:12px;">&#128270; Searching &amp; Text Processing</h3>
+    <pre><code><span class="cm"># grep — pattern search</span>
+<span class="cmd">grep</span> <span class="flg">-i</span> <span class="str">"error"</span> app.log         <span class="cm"># case insensitive</span>
+<span class="cmd">grep</span> <span class="flg">-r</span> <span class="str">"DB_HOST"</span> /etc/          <span class="cm"># recursive directory search</span>
+<span class="cmd">grep</span> <span class="flg">-v</span> <span class="str">"DEBUG"</span> app.log          <span class="cm"># invert — lines WITHOUT pattern</span>
+<span class="cmd">grep</span> <span class="flg">-c</span> <span class="str">"ERROR"</span> app.log          <span class="cm"># count matching lines</span>
+
+<span class="cm"># wc — count lines, words, bytes</span>
+<span class="cmd">wc</span> <span class="flg">-l</span> app.log                   <span class="cm"># count lines only</span>
+<span class="cmd">grep</span> <span class="str">"ERROR"</span> app.log | <span class="cmd">wc</span> <span class="flg">-l</span>   <span class="cm"># count ERROR lines</span>
+
+<span class="cm"># sort — sort lines</span>
+<span class="cmd">sort</span> /etc/hosts                  <span class="cm"># alphabetical</span>
+<span class="cmd">sort</span> <span class="flg">-k2</span> data.csv               <span class="cm"># sort by field 2</span>
+<span class="cmd">sort</span> <span class="flg">-rn</span> counts.txt             <span class="cm"># reverse numeric</span>
+
+<span class="cm"># uniq — remove/count duplicates (requires sorted input)</span>
+<span class="cmd">sort</span> ips.txt | <span class="cmd">uniq</span>            <span class="cm"># deduplicate</span>
+<span class="cmd">sort</span> ips.txt | <span class="cmd">uniq</span> <span class="flg">-c</span>        <span class="cm"># count occurrences</span>
+
+<span class="cm"># cut — extract fields</span>
+<span class="cmd">cut</span> <span class="flg">-d:</span> <span class="flg">-f1</span> /etc/passwd        <span class="cm"># field 1 using : delimiter (usernames)</span>
+<span class="cmd">cut</span> <span class="flg">-d,</span> <span class="flg">-f2,4</span> data.csv         <span class="cm"># fields 2 and 4 from CSV</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- SED -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);margin-top:15px;">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:12px;">&#9998; sed — Stream Editor</h3>
+    <p style="font-size:.9rem;color:rgba(255,255,255,.68);margin-bottom:14px;">sed treats text files as a <strong>stream</strong> — read, transform, output. Perfect for mass updates to config files.</p>
+    <pre><code><span class="cm"># s/old/new/g — global substitution</span>
+<span class="cmd">sed</span> <span class="str">'s/localhost/db.prod.internal/g'</span> config.env
+
+<span class="cm"># -i — in-place edit (modifies the file directly)</span>
+<span class="cmd">sed</span> <span class="flg">-i</span> <span class="str">'s/DEBUG/INFO/g'</span> app.conf
+
+<span class="cm"># -i.bak — in-place edit WITH backup (best practice)</span>
+<span class="cmd">sed</span> <span class="flg">-i.bak</span> <span class="str">'s/old_url/new_url/g'</span> nginx.conf
+
+<span class="cm"># /pattern/d — delete matching lines</span>
+<span class="cmd">sed</span> <span class="str">'/^#/d'</span> config.conf          <span class="cm"># delete comment lines</span>
+<span class="cmd">sed</span> <span class="str">'/^$/d'</span> config.conf          <span class="cm"># delete blank lines</span>
+
+<span class="cm"># Multiple operations with -e</span>
+<span class="cmd">sed</span> <span class="flg">-e</span> <span class="str">'s/foo/bar/g'</span> <span class="flg">-e</span> <span class="str">'/^#/d'</span> input.txt</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+</section>
+
+<!-- ⑥ LIVE DEMO -->
+<section>
+  <div class="step-badge">&#9316; Live Demo · 15 min</div>
+  <div class="topic-title">&#9654; Watch on Screen, Do on Your Terminal</div>
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+      <span class="char-name">Jagu</span>
+    </div>
+    <div class="speech-bubble" style="border-color:var(--chalk-blue)">"Golu, don't copy-paste — <span class="chalk-text">type it yourself and observe the output.</span> It won't stick until you write it by hand!"</div>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-yellow);">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:12px;">Step 1 — Generate Fake Logs, Run tail -f</h3>
+    <pre><code><span class="cm"># Generate a fake log file</span>
+<span class="cmd">for</span> i in $(seq 1 100); do
+  <span class="cmd">echo</span> <span class="str">"$(date) [INFO] Request $i processed"</span> >> /tmp/app.log
+  <span class="cmd">echo</span> <span class="str">"$(date) [ERROR] DB timeout on request $i"</span> >> /tmp/app.log
+done
+
+<span class="cm"># Live follow (add entries in a new terminal)</span>
+<span class="cmd">tail</span> <span class="flg">-f</span> /tmp/app.log
+
+<span class="cm"># View specific lines</span>
+<span class="cmd">tail</span> <span class="flg">-20</span> /tmp/app.log
+<span class="cmd">head</span> <span class="flg">-5</span> /tmp/app.log</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-blue);">
+    <h3 class="handwritten" style="color:var(--chalk-blue);margin-bottom:12px;">Step 2 — Grep Patterns in /etc/passwd</h3>
+    <pre><code><span class="cm"># Basic search</span>
+<span class="cmd">grep</span> <span class="str">"root"</span> /etc/passwd
+
+<span class="cm"># Case insensitive</span>
+<span class="cmd">grep</span> <span class="flg">-i</span> <span class="str">"BASH"</span> /etc/passwd
+
+<span class="cm"># Invert — lines that are NOT root</span>
+<span class="cmd">grep</span> <span class="flg">-v</span> <span class="str">"nologin"</span> /etc/passwd
+
+<span class="cm"># Count how many users use bash</span>
+<span class="cmd">grep</span> <span class="flg">-c</span> <span class="str">"/bin/bash"</span> /etc/passwd
+
+<span class="cm"># Recursive config search</span>
+<span class="cmd">grep</span> <span class="flg">-r</span> <span class="str">"PermitRootLogin"</span> /etc/ssh/</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:12px;">Step 3 — wc, sort, uniq Pipeline</h3>
+    <pre><code><span class="cm"># Total log lines count</span>
+<span class="cmd">wc</span> <span class="flg">-l</span> /tmp/app.log
+
+<span class="cm"># Count only ERROR lines</span>
+<span class="cmd">grep</span> <span class="str">"ERROR"</span> /tmp/app.log | <span class="cmd">wc</span> <span class="flg">-l</span>
+
+<span class="cm"># Full pipeline: ERROR messages frequency count</span>
+<span class="cmd">cat</span> /tmp/app.log | <span class="cmd">grep</span> <span class="str">"ERROR"</span> | <span class="cmd">sort</span> | <span class="cmd">uniq</span> <span class="flg">-c</span> | <span class="cmd">sort</span> <span class="flg">-rn</span>
+
+<span class="cm"># Extract usernames from /etc/passwd</span>
+<span class="cmd">cut</span> <span class="flg">-d:</span> <span class="flg">-f1</span> /etc/passwd | <span class="cmd">sort</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-pink);">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:12px;">Step 4 — sed Substitution Live</h3>
+    <pre><code><span class="cm"># Create a test config file</span>
+<span class="cmd">cat</span> > /tmp/test.conf <span class="str">&lt;&lt;'EOF'
+DB_HOST=localhost
+DB_PORT=5432
+APP_ENV=development
+# This is a comment
+DEBUG=true
+EOF</span>
+
+<span class="cm"># Preview substitution (no file change)</span>
+<span class="cmd">sed</span> <span class="str">'s/localhost/db.prod.internal/g'</span> /tmp/test.conf
+
+<span class="cm"># In-place with backup</span>
+<span class="cmd">sed</span> <span class="flg">-i.bak</span> <span class="str">'s/development/production/g'</span> /tmp/test.conf
+
+<span class="cm"># Delete comment lines</span>
+<span class="cmd">sed</span> <span class="flg">-i</span> <span class="str">'/^#/d'</span> /tmp/test.conf
+
+<span class="cm"># Verify changes</span>
+<span class="cmd">cat</span> /tmp/test.conf
+<span class="cmd">diff</span> /tmp/test.conf /tmp/test.conf.bak</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+</section>
+
+<!-- ⑦ COMMON MISTAKES -->
+<section>
+  <div class="step-badge">&#9317; Common Mistakes · 5 min</div>
+  <div class="topic-title">&#9888; Don't Make These Mistakes!</div>
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"I was using > thinking it appends, Jagu — <span class="chalk-text">the whole file got wiped!</span>"</div>
+  </div>
+
+  <div class="content-box" style="border-left:5px solid var(--chalk-orange);">
+    <div class="mistake-pair">
+      <div class="m-label">① &gt; vs &gt;&gt; confusion — overwrite vs append</div>
+      <div class="m-block m-wrong"><code>echo "new entry" > important.log   # WIPES entire file!</code></div>
+      <div class="m-block m-right"><code>echo "new entry" >> important.log  # Appends safely ✓</code></div>
+    </div>
+    <div class="mistake-pair">
+      <div class="m-label">② cat huge_file — terminal freeze</div>
+      <div class="m-block m-wrong"><code>cat /var/log/syslog          # 500MB file — terminal freezes!</code></div>
+      <div class="m-block m-right"><code>less /var/log/syslog         # Paginated, memory-safe ✓
+tail -100 /var/log/syslog   # Last 100 lines only ✓</code></div>
+    </div>
+    <div class="mistake-pair" style="margin-bottom:0">
+      <div class="m-label">③ sed -i without backup</div>
+      <div class="m-block m-wrong"><code>sed -i 's/old/new/g' nginx.conf    # No backup — how do you undo?</code></div>
+      <div class="m-block m-right"><code>sed -i.bak 's/old/new/g' nginx.conf  # .bak backup auto-create ✓
+# Revert: mv nginx.conf.bak nginx.conf</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- INTERVIEW Q -->
+<section>
+  <div class="step-badge">&#9318; Interview Questions · 5 min</div>
+  <div class="topic-title">&#10067; What You'll Be Asked in Interviews</div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">1</div><div class="iq-text">What does the Linux pipe (|) do? Explain with an example.</div><div class="iq-arr">&#9662;</div></div>
+    <div class="iq-a">The pipe connects stdout of one command to stdin of another — without creating temporary files. Example: <code style="font-family:'Fira Code'">cat file | grep "ERROR" | sort | uniq -c</code> — 4 commands run in a pipeline, data flowing through memory. Unix philosophy: small tools, each doing one thing well, composed with pipes.</div>
+  </div>
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">2</div><div class="iq-text"><code style="font-family:'Fira Code';font-size:.88rem">grep -v</code> vs plain <code style="font-family:'Fira Code';font-size:.88rem">grep</code> — what's the difference?</div><div class="iq-arr">&#9662;</div></div>
+    <div class="iq-a"><strong>grep pattern</strong> — only print lines that MATCH the pattern.<br><br><strong>grep -v pattern</strong> — only print lines that do NOT match the pattern. Invert match. Use case: filter out noise — <code style="font-family:'Fira Code'">grep -v "DEBUG" app.log</code> — remove DEBUG lines, see everything else.</div>
+  </div>
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">3</div><div class="iq-text">What's the difference between &gt; and &gt;&gt;?</div><div class="iq-arr">&#9662;</div></div>
+    <div class="iq-a"><strong>&gt;</strong> — output redirection, overwrite. If the file exists, it WIPES it; otherwise creates it. Dangerous for existing files.<br><br><strong>&gt;&gt;</strong> — output redirection, append. If the file exists, it ADDS to the end; otherwise creates it. ALWAYS use &gt;&gt; for log files and important data.</div>
+  </div>
+</section>
+
+<!-- ASSIGNMENT -->
+<section>
+  <div class="step-badge">&#9319; Assignment · 10 min</div>
+  <div class="topic-title">&#128221; Your Turn — Complete the Lab!</div>
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"Jagu, I'll analyze /var/log/syslog — <span class="chalk-text">using a pipeline!</span>"</div>
+  </div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:14px;">Task: /var/log/syslog Full Pipeline Analysis</h3>
+    <ul>
+      <li><strong>Task 1:</strong> <code style="font-family:'Fira Code';font-size:.8rem">wc -l /var/log/syslog</code> — count total lines</li>
+      <li><strong>Task 2:</strong> <code style="font-family:'Fira Code';font-size:.8rem">grep -i "error" /var/log/syslog | wc -l</code> — count error lines</li>
+      <li><strong>Task 3:</strong> <code style="font-family:'Fira Code';font-size:.8rem">grep -i "error" /var/log/syslog | sort | uniq -c | sort -rn | head -10</code> — top 10 errors</li>
+      <li><strong>Task 4:</strong> capture results with tee — <code style="font-family:'Fira Code';font-size:.8rem">... | tee ~/syslog_analysis.txt</code></li>
+    </ul>
+    <div class="accept" style="margin-top:16px;">You know you're done: <code style="font-family:'Fira Code';font-size:.78rem">~/syslog_analysis.txt</code> contains a ranked list of the top error messages.</div>
+  </div>
+</section>
+
+<!-- CLOSING CARDS -->
+<section>
+  <div style="height:1px;background:rgba(255,255,255,.1);margin-bottom:26px;"></div>
+  <div class="topic-title">&#127937; Today's Summary</div>
+  <div class="closing-grid">
+    <div class="cc takeaway"><div class="icon">&#128161;</div><div class="title">Today's Takeaway</div><div class="body">Piping commands together is how Linux engineers process millions of log lines without writing a single line of code. One-liners that would take scripts in other environments.</div></div>
+    <div class="cc interview"><div class="icon">&#127919;</div><div class="title">Today's Interview Question</div><div class="body">"How would you find the top 10 most frequent error messages in a log file?" — <em>grep ERROR | sort | uniq -c | sort -rn | head -10</em></div></div>
+    <div class="cc assign"><div class="icon">&#128203;</div><div class="title">Today's Assignment</div><div class="body"><code style="font-family:'Fira Code';font-size:.8rem">tail -f /var/log/syslog | grep -i error | tee errors.log</code> — capture live errors to both file AND screen simultaneously.</div></div>
+    <div class="cc challenge"><div class="icon">&#128640;</div><div class="title">Today's Challenge</div><div class="body">One-liner to find top 5 IPs from /var/log/nginx/access.log — <code style="font-family:'Fira Code';font-size:.75rem">cut -d' ' -f1 access.log | sort | uniq -c | sort -rn | head -5</code></div></div>
+    <div class="cc mistake"><div class="icon">&#9888;&#65039;</div><div class="title">Today's Mistake</div><div class="body">Never use <code style="font-family:'Fira Code';font-size:.8rem">&gt;</code> to append — it OVERWRITES everything. Use <code style="font-family:'Fira Code';font-size:.8rem">&gt;&gt;</code> always when you want to append to an existing file.</div></div>
+    <div class="cc protip"><div class="icon">&#128295;</div><div class="title">Today's Pro Tip</div><div class="body"><code style="font-family:'Fira Code';font-size:.8rem">tail -f app.log | grep --line-buffered "ERROR"</code> — the <code style="font-family:'Fira Code';font-size:.8rem">--line-buffered</code> flag keeps grep output flowing in real-time instead of buffering.</div></div>
+  </div>
+</section>
+
+</div><!-- /tab-lesson -->
+
+<!-- ══════════════ TAB 2 — CHEAT SHEET ══════════════ -->
+<div class="tab-pane" id="tab-cheatsheet">
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+      <span class="char-name">Jagu</span>
+    </div>
+    <div class="speech-bubble" style="border-color:var(--chalk-blue)">"Golu, print karke screen pe chipka lo! <span class="chalk-text">Ye 4 tables 90% daily text work cover karti hain.</span>"</div>
+  </div>
+
+  <div class="cs-title">File Reading Commands</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Use Case</th><th>When to Use</th></tr></thead>
+    <tbody>
+      <tr><td>cat file</td><td>Print entire file</td><td>Small files only (&lt;1MB configs)</td></tr>
+      <tr><td>head -N file</td><td>First N lines</td><td>Check file format, CSV header</td></tr>
+      <tr><td>tail -N file</td><td>Last N lines</td><td>Recent log entries</td></tr>
+      <tr><td>tail -f file</td><td>Live follow</td><td>Incident response, real-time monitoring</td></tr>
+      <tr><td>tail -f file | grep --line-buffered PATTERN</td><td>Live filtered stream</td><td>Filter noise during live incident</td></tr>
+      <tr><td>less file</td><td>Paginated view</td><td>Large files — memory safe, /search works</td></tr>
+      <tr><td>wc -l file</td><td>Line count</td><td>Quick size check, counting matches</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Redirection &amp; Streams</div>
+  <table class="cmd-table">
+    <thead><tr><th>Operator</th><th>Action</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>&gt;</td><td>Redirect stdout, OVERWRITE file</td><td>echo "text" &gt; file.txt</td></tr>
+      <tr><td>&gt;&gt;</td><td>Redirect stdout, APPEND to file</td><td>echo "text" &gt;&gt; file.txt</td></tr>
+      <tr><td>|</td><td>Pipe — stdout to next stdin</td><td>cat f | grep "E" | sort</td></tr>
+      <tr><td>tee file</td><td>Split — stdout AND file</td><td>cmd | tee output.txt</td></tr>
+      <tr><td>2&gt;&amp;1</td><td>Redirect stderr to stdout</td><td>cmd 2&gt;&amp;1 | tee all.log</td></tr>
+      <tr><td>2&gt; file</td><td>Redirect stderr to file only</td><td>cmd 2&gt; errors.log</td></tr>
+      <tr><td>&gt; /dev/null 2&gt;&amp;1</td><td>Silence all output</td><td>cron.sh &gt; /dev/null 2&gt;&amp;1</td></tr>
+      <tr><td>&lt; file</td><td>Redirect file to stdin</td><td>sort &lt; unsorted.txt</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">grep / wc / sort / uniq / cut</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>What It Does</th></tr></thead>
+    <tbody>
+      <tr><td>grep "pattern" file</td><td>Lines matching pattern</td></tr>
+      <tr><td>grep -i "pattern" file</td><td>Case insensitive match</td></tr>
+      <tr><td>grep -v "pattern" file</td><td>Invert — lines NOT matching</td></tr>
+      <tr><td>grep -r "pattern" dir/</td><td>Recursive directory search</td></tr>
+      <tr><td>grep -c "pattern" file</td><td>Count matching lines only</td></tr>
+      <tr><td>grep -n "pattern" file</td><td>Show line numbers</td></tr>
+      <tr><td>wc -l file</td><td>Count lines</td></tr>
+      <tr><td>wc -w file</td><td>Count words</td></tr>
+      <tr><td>sort file</td><td>Sort lines alphabetically</td></tr>
+      <tr><td>sort -rn file</td><td>Sort reverse numeric (largest first)</td></tr>
+      <tr><td>sort -k2 file</td><td>Sort by field 2</td></tr>
+      <tr><td>uniq file</td><td>Remove consecutive duplicates (sort first!)</td></tr>
+      <tr><td>uniq -c file</td><td>Prefix each line with count</td></tr>
+      <tr><td>cut -d: -f1 file</td><td>Extract field 1 using : delimiter</td></tr>
+      <tr><td>cut -d, -f2,4 file</td><td>Extract fields 2 and 4 from CSV</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">sed Patterns</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>What It Does</th></tr></thead>
+    <tbody>
+      <tr><td>sed 's/old/new/' file</td><td>Replace first occurrence per line (print only)</td></tr>
+      <tr><td>sed 's/old/new/g' file</td><td>Replace ALL occurrences per line (print only)</td></tr>
+      <tr><td>sed -i 's/old/new/g' file</td><td>In-place edit, no backup</td></tr>
+      <tr><td>sed -i.bak 's/old/new/g' file</td><td>In-place edit WITH .bak backup (recommended)</td></tr>
+      <tr><td>sed '/pattern/d' file</td><td>Delete lines matching pattern (print only)</td></tr>
+      <tr><td>sed -i '/^#/d' file</td><td>In-place: delete all comment lines</td></tr>
+      <tr><td>sed -i '/^$/d' file</td><td>In-place: delete all blank lines</td></tr>
+      <tr><td>sed -n '10,20p' file</td><td>Print lines 10 to 20 only</td></tr>
+      <tr><td>sed -e 's/a/b/g' -e '/^#/d' file</td><td>Multiple operations chained</td></tr>
+    </tbody>
+  </table>
+
+</div><!-- /tab-cheatsheet -->
+
+<!-- ══════════════ TAB 3 — LAB ══════════════ -->
+<div class="tab-pane" id="tab-lab">
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"Jagu, ab main khud karta hoon — <span class="chalk-text">ek ek step carefully!</span>"</div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:8px;">Lab Goal</h3>
+    <p style="font-size:.9rem;color:rgba(255,255,255,.68);">Real log file banao, tail se follow karo, grep se filter karo, full pipeline chalaao, sed se config update karo, aur findings ek notes file mein capture karo.</p>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">1</div><div class="lab-title">Create a fake log file and run tail -f</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Generate log file</span>
+<span class="cmd">for</span> i in $(seq 1 200); do
+  <span class="cmd">echo</span> <span class="str">"$(date) [INFO] Request $i OK"</span> >> /tmp/lab.log
+  <span class="cmd">echo</span> <span class="str">"$(date) [ERROR] Connection refused request $i"</span> >> /tmp/lab.log
+  <span class="cmd">echo</span> <span class="str">"$(date) [WARN] Slow response $i"</span> >> /tmp/lab.log
+done
+
+<span class="cm"># Run live tail</span>
+<span class="cmd">tail</span> <span class="flg">-f</span> /tmp/lab.log</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; tail -f shows live log stream. Exited with Ctrl+C.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">2</div><div class="lab-title">grep patterns in /etc/passwd</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Users who use bash</span>
+<span class="cmd">grep</span> <span class="str">"/bin/bash"</span> /etc/passwd
+
+<span class="cm"># Users who CANNOT login (invert)</span>
+<span class="cmd">grep</span> <span class="flg">-v</span> <span class="str">"nologin"</span> /etc/passwd
+
+<span class="cm"># Count bash users</span>
+<span class="cmd">grep</span> <span class="flg">-c</span> <span class="str">"/bin/bash"</span> /etc/passwd
+
+<span class="cm"># Extract usernames (field 1)</span>
+<span class="cmd">cut</span> <span class="flg">-d:</span> <span class="flg">-f1</span> /etc/passwd | <span class="cmd">sort</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; /etc/passwd mein grep results aur usernames sorted list dikhi.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">3</div><div class="lab-title">Count log entries with wc -l</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Total lines</span>
+<span class="cmd">wc</span> <span class="flg">-l</span> /tmp/lab.log
+
+<span class="cm"># ERROR lines count</span>
+<span class="cmd">grep</span> <span class="str">"ERROR"</span> /tmp/lab.log | <span class="cmd">wc</span> <span class="flg">-l</span>
+
+<span class="cm"># INFO lines count</span>
+<span class="cmd">grep</span> <span class="str">"INFO"</span> /tmp/lab.log | <span class="cmd">wc</span> <span class="flg">-l</span>
+
+<span class="cm"># WARN lines count</span>
+<span class="cmd">grep</span> <span class="str">"WARN"</span> /tmp/lab.log | <span class="cmd">wc</span> <span class="flg">-l</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; Total, ERROR, INFO, WARN line counts show hue.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">4</div><div class="lab-title">Full pipe chain: grep ERROR | sort | uniq -c | sort -rn</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Full pipeline — top error messages by frequency</span>
+<span class="cmd">cat</span> /tmp/lab.log | <span class="cmd">grep</span> <span class="str">"ERROR"</span> | <span class="cmd">sort</span> | <span class="cmd">uniq</span> <span class="flg">-c</span> | <span class="cmd">sort</span> <span class="flg">-rn</span>
+
+<span class="cm"># Same output + tee to file</span>
+<span class="cmd">cat</span> /tmp/lab.log | <span class="cmd">grep</span> <span class="str">"ERROR"</span> | <span class="cmd">sort</span> | <span class="cmd">uniq</span> <span class="flg">-c</span> | <span class="cmd">sort</span> <span class="flg">-rn</span> | <span class="cmd">tee</span> /tmp/top_errors.txt
+
+<span class="cm"># Verify tee worked</span>
+<span class="cmd">cat</span> /tmp/top_errors.txt</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; Top errors ranked by count shown, also saved to /tmp/top_errors.txt hua.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">5</div><div class="lab-title">sed substitution on config file</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Create config file</span>
+<span class="cmd">cat</span> > /tmp/app.conf <span class="str">&lt;&lt;'EOF'
+DB_HOST=localhost
+DB_PORT=5432
+APP_ENV=development
+# DB password placeholder
+DB_PASS=changeme
+DEBUG=true
+EOF</span>
+
+<span class="cm"># Preview — no change yet</span>
+<span class="cmd">sed</span> <span class="str">'s/development/production/g'</span> /tmp/app.conf
+
+<span class="cm"># In-place with backup</span>
+<span class="cmd">sed</span> <span class="flg">-i.bak</span> <span class="str">'s/development/production/g'</span> /tmp/app.conf
+
+<span class="cm"># Delete comment lines in-place</span>
+<span class="cmd">sed</span> <span class="flg">-i</span> <span class="str">'/^#/d'</span> /tmp/app.conf
+
+<span class="cm"># Show diff</span>
+<span class="cmd">diff</span> /tmp/app.conf /tmp/app.conf.bak</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; app.conf shows "production", no comments remain, .bak backup exist karta hai.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">6</div><div class="lab-title">Notes file banao — aaj ke findings capture karo</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Create notes file (append with >>)</span>
+<span class="cmd">echo</span> <span class="str">"=== L03 Lab Notes $(date) ==="</span> >> ~/devops_notes.txt
+<span class="cmd">echo</span> <span class="str">"Total log lines: $(wc -l &lt; /tmp/lab.log)"</span> >> ~/devops_notes.txt
+<span class="cmd">echo</span> <span class="str">"ERROR lines: $(grep -c ERROR /tmp/lab.log)"</span> >> ~/devops_notes.txt
+<span class="cmd">echo</span> <span class="str">"Top error saved to: /tmp/top_errors.txt"</span> >> ~/devops_notes.txt
+
+<span class="cm"># Verify notes file</span>
+<span class="cmd">cat</span> ~/devops_notes.txt</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; ~/devops_notes.txt contains today lab summary. Appended with >>, not overwritten!</div>
+  </div>
+
+  <div class="lab-prog-wrap">
+    <div style="font-size:1.4rem">&#127942;</div>
+    <div style="flex:1;">
+      <div style="font-family:'Architects Daughter';font-size:1.05rem;margin-bottom:6px">Lab Progress</div>
+      <div class="lab-bar"><div class="lab-fill" id="lab-fill"></div></div>
+    </div>
+    <div style="font-family:'Fira Code';font-size:.83rem;color:rgba(255,255,255,.45)" id="lab-count">0 / 6</div>
+  </div>
+
+</div><!-- /tab-lab -->
+
+<!-- FOOTER -->
+<div class="footer">
+  <p>#LearnDevOps · M01 · L03 — Text Files &amp; I/O Redirection · By Aryashree Pritikrishna</p>
+  <a href="https://github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap">github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap</a>
+</div>
+
+<!-- LESSON NAVIGATION -->
+<div class="lesson-nav">
+  <div class="nav-inner">
+    <a href="../day-03/L04-file-system-hierarchy.html" class="nav-btn prev">&larr; Day 3 &mdash; File System Hierarchy</a>
+    <a href="../../index.html" class="nav-btn up">&#8593; Curriculum</a>
+    <a href="../day-06/L05-boot-and-init.html" class="nav-btn next">Day 6 &mdash; Boot &amp; Init &rarr;</a>
+  </div>
+</div>
+
+</div><!-- /blackboard -->
+
+<script>
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+  function copyCode(btn) {
+    const pre  = btn.closest('pre');
+    const text = (pre.querySelector('code') || pre).innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Done!';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 2000);
+    });
+  }
+  function toggleIQ(el) { el.classList.toggle('open'); }
+  function updateLab() {
+    const boxes = document.querySelectorAll('#tab-lab .lab-chk');
+    const done  = Array.from(boxes).filter(b => b.checked).length;
+    document.getElementById('lab-fill').style.width  = Math.round(done/boxes.length*100) + '%';
+    document.getElementById('lab-count').textContent = done + ' / ' + boxes.length;
+  }
+
+  // ─── Back to top ──────────────────────────────────────────────
+  (function() {
+    var btn = document.createElement('button');
+    btn.className = 'to-top';
+    btn.innerHTML = '&#8593;';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.onclick = function() { window.scrollTo({ top:0, behavior:'smooth' }); };
+    document.body.appendChild(btn);
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        window.requestAnimationFrame(function() {
+          btn.classList.toggle('visible', window.scrollY > 400);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+  })();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>M01 · U01 · Day 09 — SSH &amp; Secure Remote Access | Linux Internals</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg-blackboard: #0a0e14;
+    --chalk-white:  #f1f2f6;
+    --chalk-yellow: #feca57;
+    --chalk-blue:   #48dbfb;
+    --chalk-green:  #1dd1a1;
+    --chalk-pink:   #ff9ff3;
+    --chalk-orange: #ff9f43;
+    --chalk-red:    #ff6b6b;
+    --wood-frame:   #2f3542;
+    --surface:      rgba(255,255,255,0.04);
+  }
+  @media print {
+    body { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; background:var(--bg-blackboard)!important; }
+    .blackboard { border:none!important; box-shadow:none!important; width:100%!important; margin:0!important; padding:10px!important; }
+    section { page-break-inside:avoid; }
+    .tab-nav { display:none!important; }
+    .tab-pane { display:block!important; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg-blackboard); color:var(--chalk-white); font-family:'Inter',sans-serif; padding:20px; }
+  .blackboard { max-width:1000px; margin:0 auto; border:12px solid var(--wood-frame); padding:50px; box-shadow:0 30px 60px rgba(0,0,0,.8); background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px); background-size:30px 30px; }
+
+  /* AUTHOR HEADER */
+  .author-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--chalk-yellow); padding-bottom:20px; margin-bottom:40px; }
+  .author-info h2 { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:1.8rem; }
+  .author-info p  { font-family:'Architects Daughter'; color:var(--chalk-white); font-size:1.1rem; margin-top:5px; }
+  .author-contact { text-align:right; font-family:'Fira Code',monospace; font-size:.82rem; color:var(--chalk-blue); }
+  .author-contact a { color:var(--chalk-blue); text-decoration:none; }
+  .contact-item { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:4px; }
+
+  /* PAGE TITLE */
+  h1 { font-family:'Architects Daughter',cursive; font-size:3.2rem; text-align:center; color:var(--chalk-yellow); text-transform:uppercase; margin-bottom:5px; }
+  .subtitle { text-align:center; color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1.4rem; margin-bottom:16px; }
+  .meta-badges { display:flex; justify-content:center; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
+  .badge { font-family:'Fira Code',monospace; font-size:.78rem; padding:4px 12px; border-radius:20px; border:1px solid; }
+  .badge-mod { border-color:var(--chalk-yellow); color:var(--chalk-yellow); }
+  .badge-time { border-color:var(--chalk-blue); color:var(--chalk-blue); }
+  .badge-status { border-color:var(--chalk-green); color:var(--chalk-green); }
+
+  /* TABS */
+  .tab-nav { display:flex; gap:0; margin-bottom:40px; border:2px solid var(--wood-frame); border-radius:12px; overflow:hidden; }
+  .tab-btn { flex:1; padding:14px 20px; font-family:'Architects Daughter',cursive; font-size:1.1rem; background:transparent; color:var(--chalk-white); border:none; cursor:pointer; border-right:2px solid var(--wood-frame); transition:all .2s; }
+  .tab-btn:last-child { border-right:none; }
+  .tab-btn:hover { background:rgba(255,255,255,.06); }
+  .tab-btn.active { background:rgba(254,202,87,.1); color:var(--chalk-yellow); }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; }
+
+  /* SHARED */
+  h2, h3, .handwritten, .speech-bubble, .topic-title { font-family:'Architects Daughter',cursive; }
+  section { margin-bottom:70px; padding-bottom:40px; border-bottom:2px dashed rgba(255,255,255,.1); }
+  section:last-of-type { border-bottom:none; }
+  .topic-title { color:var(--chalk-pink); font-size:2rem; margin-bottom:28px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+  .content-box { background:var(--surface); padding:25px; border-radius:15px; border:2px solid transparent; margin-bottom:20px; }
+  ul { list-style:none; padding-left:0; }
+  li { margin-bottom:13px; padding-left:28px; position:relative; }
+  li::before { content:'→'; position:absolute; left:0; color:var(--chalk-blue); }
+
+  /* CHARACTERS */
+  .doodle-container { display:flex; align-items:center; gap:28px; margin:28px 0; }
+  .doodle-container.right { justify-content:flex-end; margin-top:14px; }
+  .doodle-wrapper { display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .char-name { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:.9rem; }  .golu { width:60px; height:100px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .golu-img { width:60px; height:100px; object-fit:cover; object-position:center 20%; border-radius:10px; border:2.5px solid var(--chalk-green); box-shadow:0 0 12px rgba(29,209,161,.2); }
+  .jagu { width:70px; height:110px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .jagu-img { width:70px; height:100px; object-fit:cover; object-position:center 15%; border-radius:10px; border:2.5px solid var(--chalk-blue); box-shadow:0 0 12px rgba(72,219,251,.2); }
+
+  .speech-bubble { border:2px solid var(--chalk-white); border-radius:25px; padding:18px 26px; position:relative; max-width:72%; font-family:'Architects Daughter',cursive; font-size:1.2rem; line-height:1.5; }
+  .speech-bubble::before { content:''; position:absolute; left:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-right:14px solid var(--chalk-white); }
+  .speech-bubble.flip::before { display:none; }
+  .speech-bubble.flip::after { content:''; position:absolute; right:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-left:14px solid var(--chalk-white); }
+  .chalk-text { color:var(--chalk-yellow); font-weight:bold; }
+
+  /* INTRO */
+  .intro-banner { border:4px solid var(--chalk-yellow); padding:28px; border-radius:20px; margin-bottom:36px; background:rgba(254,202,87,.05); }
+
+  /* STATS */
+  .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; text-align:center; margin:20px 0; }
+  .stat-val { font-family:'Architects Daughter'; font-size:2.6rem; }
+  .stat-lbl { font-family:'Architects Daughter'; color:var(--chalk-blue); margin-top:4px; font-size:.95rem; }
+
+  /* DIAGRAM */
+  .diagram-container { border:3px solid var(--chalk-white); border-radius:25px; padding:36px; text-align:center; background:rgba(0,0,0,.5); margin:28px 0; }
+  .boot-chain { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:5px; }
+  .boot-node { font-family:'Architects Daughter'; font-size:.9rem; padding:8px 13px; border-radius:10px; border:2px solid; white-space:nowrap; }
+  .boot-arr { color:var(--chalk-yellow); font-size:1.2rem; }
+
+  /* SSH flow diagram */
+  .ssh-flow { font-family:'Fira Code',monospace; font-size:.82rem; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:22px 28px; margin:14px 0; line-height:2; color:var(--chalk-white); overflow-x:auto; }
+  .ssh-flow .fl-client { color:var(--chalk-yellow); }
+  .ssh-flow .fl-server { color:var(--chalk-blue); }
+  .ssh-flow .fl-arrow  { color:var(--chalk-green); }
+  .ssh-flow .fl-note   { color:rgba(255,255,255,.45); font-size:.75rem; }
+
+  /* TOPIC FLOW */
+  .topic-flow { display:flex; flex-direction:column; }
+  .tf-row { display:flex; align-items:flex-start; gap:14px; }
+  .tf-spine { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+  .tf-dot { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:.85rem; font-weight:700; }
+  .tf-line { width:2px; min-height:20px; flex:1; margin:3px 0; background:rgba(255,255,255,.1); }
+  .tf-body { padding:2px 0 18px; flex:1; }
+  .tf-body h4 { font-family:'Architects Daughter'; font-size:1.1rem; margin-bottom:3px; }
+  .tf-body p  { font-size:.86rem; color:rgba(255,255,255,.55); line-height:1.5; }
+
+  /* VS */
+  .vs-row { display:flex; align-items:center; gap:14px; margin:20px 0; }
+  .vs-circle { width:52px; height:52px; border:3px solid var(--chalk-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:1.3rem; color:var(--chalk-orange); flex-shrink:0; }
+
+  /* STEP BADGE */
+  .step-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:20px; padding:4px 14px; font-family:'Fira Code',monospace; font-size:.76rem; color:var(--chalk-blue); margin-bottom:16px; }
+
+  /* MISTAKE */
+  .mistake-pair { margin-bottom:22px; }
+  .m-label { font-family:'Architects Daughter'; font-size:1rem; margin-bottom:7px; color:var(--chalk-orange); }
+  .m-block { border-radius:10px; padding:12px 16px; margin-top:5px; }
+  .m-wrong { background:rgba(255,107,107,.07); border:1px solid rgba(255,107,107,.3); }
+  .m-right { background:rgba(29,209,161,.07); border:1px solid rgba(29,209,161,.3); }
+  .m-block code { font-family:'Fira Code',monospace; font-size:.8rem; color:var(--chalk-white); display:block; white-space:pre; }
+
+  /* CODE */
+  pre { background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:18px 20px; overflow-x:auto; margin:12px 0; position:relative; }
+  pre code { font-family:'Fira Code',monospace; font-size:.8rem; line-height:1.7; color:var(--chalk-white); }
+  .copy-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.13); color:rgba(255,255,255,.45); padding:3px 10px; border-radius:6px; font-family:'Fira Code',monospace; font-size:.7rem; cursor:pointer; transition:all .15s; }
+  .copy-btn:hover { background:rgba(254,202,87,.2); color:var(--chalk-yellow); border-color:var(--chalk-yellow); }
+  .copy-btn.done { background:rgba(29,209,161,.2); color:var(--chalk-green); border-color:var(--chalk-green); }
+  .cm  { color:#546e7a; }
+  .cmd { color:var(--chalk-blue); }
+  .flg { color:var(--chalk-pink); }
+  .str { color:var(--chalk-green); }
+
+  /* KEY COMPARISON TABLE */
+  .key-table { width:100%; border-collapse:collapse; margin:14px 0; font-size:.83rem; }
+  .key-table th { color:var(--chalk-yellow); border-bottom:2px solid var(--chalk-yellow); text-align:left; padding:10px 12px; font-family:'Architects Daughter'; font-size:1rem; }
+  .key-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.07); vertical-align:top; }
+  .key-table td:first-child { font-family:'Fira Code',monospace; color:var(--chalk-blue); }
+  .key-table tr:last-child td { border-bottom:none; }
+
+  /* INTERVIEW Q */
+  .iq { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .iq-q { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; cursor:pointer; }
+  .iq-q:hover { background:rgba(255,255,255,.03); }
+  .iq-num { width:28px; height:28px; border-radius:50%; background:rgba(72,219,251,.13); color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+  .iq-text { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; line-height:1.4; }
+  .iq-arr { color:rgba(255,255,255,.28); font-size:.9rem; transition:transform .2s; margin-top:4px; }
+  .iq.open .iq-arr { transform:rotate(180deg); }
+  .iq-a { display:none; padding:0 20px 16px 60px; font-size:.88rem; color:rgba(255,255,255,.62); line-height:1.65; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; margin-top:-1px; }
+  .iq.open .iq-a { display:block; }
+
+  /* QUIZ */
+  .quiz-item { margin-bottom:22px; padding-bottom:16px; border-bottom:1px dashed rgba(255,255,255,.06); }
+  .quiz-q { font-family:'Architects Daughter'; font-size:1.15rem; margin-bottom:10px; }
+  .quiz-opts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .quiz-opt { font-family:'Architects Daughter'; color:var(--chalk-blue); font-size:1rem; cursor:pointer; padding:7px 10px; border-radius:8px; border:1px solid rgba(72,219,251,.2); transition:all .15s; }
+  .quiz-opt:hover { background:rgba(72,219,251,.08); }
+  .quiz-opt.correct { background:rgba(29,209,161,.14); border-color:var(--chalk-green); color:var(--chalk-green); pointer-events:none; }
+  .quiz-opt.wrong   { background:rgba(255,107,107,.1); border-color:var(--chalk-red); color:var(--chalk-red); pointer-events:none; }
+  .answer-key { border:2px dashed var(--chalk-green); padding:18px 22px; border-radius:14px; margin-top:28px; background:rgba(29,209,161,.05); }
+
+  /* CLOSING CARDS */
+  .closing-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+  .cc { background:var(--surface); border:2px solid; border-radius:16px; padding:18px 20px; }
+  .cc .icon { font-size:1.5rem; margin-bottom:7px; }
+  .cc .title { font-family:'Architects Daughter'; font-size:1.05rem; margin-bottom:6px; }
+  .cc .body  { font-size:.86rem; color:rgba(255,255,255,.68); line-height:1.6; }
+  .cc.takeaway  { border-color:var(--chalk-yellow); }
+  .cc.interview { border-color:var(--chalk-blue); }
+  .cc.assign    { border-color:var(--chalk-green); }
+  .cc.challenge { border-color:var(--chalk-orange); }
+  .cc.mistake   { border-color:var(--chalk-red); }
+  .cc.protip    { border-color:var(--chalk-pink); }
+
+  /* CHEAT TABLE */
+  .cmd-table { width:100%; border-collapse:collapse; margin:14px 0; }
+  .cmd-table th { color:var(--chalk-yellow); border-bottom:2px solid var(--chalk-yellow); text-align:left; padding:10px 12px; font-family:'Architects Daughter'; font-size:1rem; }
+  .cmd-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.07); font-size:.81rem; vertical-align:top; }
+  .cmd-table td:first-child { font-family:'Fira Code',monospace; color:var(--chalk-blue); white-space:nowrap; }
+  .cmd-table td:last-child  { color:rgba(255,255,255,.58); }
+  .cs-title { font-family:'Architects Daughter'; color:var(--chalk-pink); font-size:1.5rem; margin:32px 0 8px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+
+  /* LAB */
+  .lab-step { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:20px 22px; margin-bottom:13px; }
+  .lab-hdr { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .lab-num { width:30px; height:30px; border-radius:50%; background:rgba(254,202,87,.13); color:var(--chalk-yellow); font-family:'Architects Daughter'; font-size:1.1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .lab-title { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; }
+  .lab-chk { width:18px; height:18px; accent-color:var(--chalk-green); cursor:pointer; }
+  .accept { background:rgba(29,209,161,.05); border:1px solid rgba(29,209,161,.28); border-radius:9px; padding:10px 14px; margin-top:9px; font-size:.83rem; color:var(--chalk-green); }
+  .lab-prog-wrap { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:16px 20px; display:flex; align-items:center; gap:14px; margin-top:10px; }
+  .lab-bar { flex:1; height:6px; background:rgba(255,255,255,.09); border-radius:3px; }
+  .lab-fill { height:100%; background:linear-gradient(90deg,var(--chalk-green),var(--chalk-blue)); border-radius:3px; width:0; transition:width .3s; }
+
+  /* FOOTER */
+  .footer { text-align:center; color:#555; margin-top:60px; font-family:'Architects Daughter'; border-top:1px solid rgba(255,255,255,.09); padding-top:20px; }
+  .footer a { color:var(--chalk-blue); text-decoration:none; font-family:'Fira Code'; font-size:.85rem; }
+
+  
+  /* LESSON NAVIGATION */
+  .lesson-nav { margin-top:40px; padding-top:20px; border-top:2px solid rgba(255,255,255,.09); }
+  .nav-inner { display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap; }
+  .nav-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:10px; font-family:'Architects Daughter',cursive; font-size:.92rem; text-decoration:none; transition:all .15s; border:1px solid rgba(255,255,255,.12); color:var(--chalk-white); background:var(--surface); white-space:nowrap; }
+  .nav-btn:hover { border-color:var(--chalk-yellow); color:var(--chalk-yellow); background:rgba(254,202,87,.06); transform:translateY(-1px); }
+  .nav-btn.up { border-color:rgba(72,219,251,.2); color:var(--chalk-blue); }
+  .nav-btn.up:hover { border-color:var(--chalk-blue); background:rgba(72,219,251,.06); }
+  .nav-btn.prev { border-color:rgba(255,255,255,.1); }
+  .nav-btn.next { border-color:rgba(255,255,255,.1); }
+  .nav-btn.disabled { opacity:.3; pointer-events:none; border-color:transparent; background:transparent; }
+  @media(max-width:680px) {
+    .nav-inner { flex-direction:column; align-items:stretch; }
+    .nav-btn { justify-content:center; }
+  }
+
+  /* BACK TO TOP floating button */
+  .to-top { position:fixed; bottom:30px; right:30px; width:48px; height:48px; border-radius:50%; background:var(--chalk-yellow); color:#0a0e14; border:none; cursor:pointer; font-size:1.3rem; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:all .25s ease; z-index:1000; box-shadow:0 4px 16px rgba(254,202,87,.25); }
+  .to-top.visible { opacity:1; visibility:visible; }
+  .to-top:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(254,202,87,.35); }
+  @media(max-width:680px) {
+    .to-top { bottom:16px; right:16px; width:42px; height:42px; font-size:1.1rem; }
+  }
+
+
+@media(max-width:680px) {
+    .blackboard { padding:22px 16px; }
+    h1 { font-size:2.1rem; }
+    .closing-grid,.stat-row { grid-template-columns:1fr; }
+    .author-header { flex-direction:column; gap:14px; }
+    .author-contact { text-align:left; }
+    .vs-row { flex-direction:column; }
+    .quiz-opts { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="blackboard">
+
+<!-- AUTHOR HEADER -->
+<header class="author-header">
+  <div class="author-info">
+    <h2>Aryashree Pritikrishna</h2>
+    <p>AI Powered DevOps &amp; Platform Engineering</p>
+  </div>
+  <div class="author-contact">
+    <div class="contact-item">&#128188; <a href="https://www.linkedin.com/in/aryashreepritikrishna/">linkedin.com/in/aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128250; <a href="https://www.youtube.com/@aryashreepritikrishna">youtube.com/@aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128231; <a href="mailto:aryashreep@gmail.com">aryashreep@gmail.com</a></div>
+  </div>
+</header>
+
+<!-- PAGE TITLE -->
+<header>
+  <h1>SSH &amp; Secure Remote Access</h1>
+  <p class="subtitle">M01 &middot; U01 &middot; Day 09 &mdash; Linux Internals</p>
+  <div class="meta-badges">
+    <span class="badge badge-mod">M01 &middot; Linux Foundations</span>
+    <span class="badge badge-time">&#9200; 45 min</span>
+    <span class="badge badge-status">&#9679; Draft</span>
+  </div>
+</header>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('lesson',this)">&#128214; Lesson</button>
+  <button class="tab-btn" onclick="switchTab('cheatsheet',this)">&#128203; Cheat Sheet</button>
+  <button class="tab-btn" onclick="switchTab('lab',this)">&#129514; Lab</button>
+</div>
+
+<!-- ══════════════ TAB 1 — LESSON ══════════════ -->
+<div class="tab-pane active" id="tab-lesson">
+
+<!-- INTRO DIALOGUE -->
+<section>
+  <div class="intro-banner">
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"Jagu bhai, AWS EC2 instance milga — lekin <span class="chalk-text">password se login dangerous lagta hai.</span> Sab kehte hain 'use SSH keys' — samjhao!"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"Golu, password SSH = <span class="chalk-text">unlocked front door.</span> Key-based SSH = biometric lock. Aaj ke baad koi bhi server safely access kar sakte ho — <span class="chalk-text">0 password!</span>"</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="content-box" style="margin-top:20px;border-left:4px solid var(--chalk-yellow);">
+      <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:9px;">Aaj kya seekhenge?</h3>
+      <p class="handwritten" style="font-size:1.1rem;">Generate ED25519 key pair, configure <code style="font-family:'Fira Code'">authorized_keys</code> for passwordless login, write <code style="font-family:'Fira Code'">~/.ssh/config</code> for multiple servers, and use SSH tunneling — sab ek lesson mein!</p>
+    </div>
+  </div>
+</section>
+
+<!-- LEARNING OBJECTIVES -->
+<section>
+  <div class="topic-title">&#127919; Learning Objectives</div>
+  <div class="content-box" style="border-left:5px solid var(--chalk-green);">
+    <ul>
+      <li><strong>Generate</strong> ED25519 SSH key pair with passphrase protection.</li>
+      <li><strong>Configure</strong> <code style="font-family:'Fira Code';color:var(--chalk-blue)">authorized_keys</code> for passwordless server login.</li>
+      <li><strong>Write</strong> <code style="font-family:'Fira Code';color:var(--chalk-blue)">~/.ssh/config</code> for managing multiple server identities.</li>
+      <li><strong>Use</strong> SSH local and remote port forwarding to tunnel traffic securely.</li>
+    </ul>
+    <p class="handwritten" style="color:var(--chalk-red);margin-top:14px;font-size:1.1rem;">
+      &#128161; <span class="chalk-text">Kyu Seekhein?</span> Kyunki production servers mein password auth = open invitation for hackers. ED25519 key + PasswordAuthentication no = mathematically brute-force proof.
+    </p>
+  </div>
+</section>
+
+<!-- STORY -->
+<section>
+  <div class="step-badge">&#9312; Story &middot; 2 min</div>
+  <div class="topic-title">&#128218; The Breach That Shouldn't Have Happened</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);">
+    <p class="handwritten" style="font-size:1.2rem;line-height:1.75;">
+      Ek company ka production server <span class="chalk-text">brute-forced ho gaya.</span> Attacker ne 50,000 password combinations try kiye — 2 din mein. Eventually crack ho gaya.
+    </p>
+    <p style="font-size:.93rem;color:rgba(255,255,255,.7);margin-top:14px;line-height:1.7;">
+      Root cause: <strong>root SSH with password auth enabled.</strong> Senior DevOps engineer ne dikhaya: ek command — <code style="font-family:'Fira Code';color:var(--chalk-blue)">PasswordAuthentication no</code> in <code style="font-family:'Fira Code';color:var(--chalk-blue)">/etc/ssh/sshd_config</code> — would have made that 2-day attack <strong style="color:var(--chalk-green)">mathematically impossible.</strong>
+    </p>
+    <p style="font-size:.9rem;color:var(--chalk-green);margin-top:12px;font-style:italic;">
+      With ED25519 keys, brute force is not "hard" — it's impossible. 128-bit security means more attempts than atoms in the universe. &#127919;
+    </p>
+  </div>
+</section>
+
+<!-- REAL-WORLD PROBLEM + TOPIC FLOW -->
+<section>
+  <div class="step-badge">&#9313; Real-world Problem &middot; 3 min</div>
+  <div class="topic-title">&#10069; Kya Toot-ta Hai Iske Bina?</div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:16px;">Topic Flow — Is Lesson Ka Rasta</h3>
+    <div class="topic-flow">
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,107,107,.14);color:var(--chalk-red)">P</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-red)">Problem</h4><p>Password SSH = brute force risk + credential leaks + no audit trail.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">S</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-yellow)">Story</h4><p>50,000 attempts over 2 days cracked a password. One config line would have stopped it.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">V</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Visualization</h4><p>Client → Challenge → Sign with private key → Server verifies with public key.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,243,.14);color:var(--chalk-pink)">T</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-pink)">Theory</h4><p>Key types (ED25519 vs RSA), authorized_keys, known_hosts, ssh config, tunneling.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(29,209,161,.14);color:var(--chalk-green)">H</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-green)">Hands-on</h4><p>ssh-keygen → ssh-copy-id → config file → port forwarding demo.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,67,.14);color:var(--chalk-orange)">B</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-orange)">Best Practice</h4><p>ED25519, passphrase, PasswordAuthentication no, ssh-agent.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">I</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Interview</h4><p>Explain challenge-response. authorized_keys vs known_hosts. Bastion host setup.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">A</div></div><div class="tf-body" style="padding-bottom:0"><h4 style="color:var(--chalk-yellow)">Assignment</h4><p>Generate key, passwordless localhost login, disable password auth, test ProxyJump.</p></div></div>
+    </div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-red);">
+    <h3 class="handwritten" style="color:var(--chalk-red);margin-bottom:13px;">Bina SSH key knowledge ke kya hoga?</h3>
+    <ul>
+      <li>Password reuse across servers — <strong>ek breach = sab breach</strong></li>
+      <li>No individual audit trail — <strong>who logged in when? God knows.</strong></li>
+      <li>Key rotation nightmare — shared passwords, no revocation mechanism</li>
+      <li>GitLab used password SSH until 2019 — multiple breaches logged</li>
+      <li>Bastion host + ProxyJump = black magic without this foundation</li>
+    </ul>
+  </div>
+</section>
+
+<!-- GROUP 1 — PASSWORD vs KEY-BASED AUTH -->
+<section>
+  <div class="step-badge">&#9314; Theory Group 1 &middot; 5 min</div>
+  <div class="topic-title">&#128273; Password vs Key-Based Auth</div>
+
+  <div class="stat-row">
+    <div><div class="stat-val" style="color:var(--chalk-red)">50K</div><div class="stat-lbl">Brute-force attempts in 2 days</div></div>
+    <div><div class="stat-val" style="color:var(--chalk-green)">2^128</div><div class="stat-lbl">ED25519 key space (impossible)</div></div>
+    <div><div class="stat-val" style="color:var(--chalk-yellow)">1 line</div><div class="stat-lbl">PasswordAuthentication no</div></div>
+  </div>
+
+  <div class="vs-row" style="margin-top:24px;">
+    <div class="content-box" style="flex:1;border-color:var(--chalk-red);">
+      <h3 class="handwritten" style="color:var(--chalk-red);">Password Auth</h3>
+      <ul>
+        <li>Human-memorizable — also human-guessable</li>
+        <li>Brute-forceable — tools like hydra, medusa</li>
+        <li>Transmitted over network (even if encrypted)</li>
+        <li style="color:var(--chalk-red)">Rotation pain — must update everywhere</li>
+        <li style="color:var(--chalk-red)">Shared passwords = no individual audit</li>
+      </ul>
+    </div>
+    <div class="vs-circle">VS</div>
+    <div class="content-box" style="flex:1;border-color:var(--chalk-green);">
+      <h3 class="handwritten" style="color:var(--chalk-green);">Key-Based Auth</h3>
+      <ul>
+        <li>Mathematically unforgeable (ED25519 = 128-bit)</li>
+        <li>Private key NEVER transmitted — only signature</li>
+        <li>Revoke one key = one user, not everyone</li>
+        <li style="color:var(--chalk-green)">Brute force: physically impossible</li>
+        <li style="color:var(--chalk-green)">Add passphrase = 2nd security layer</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="content-box" style="border:2px dashed var(--chalk-white);margin-top:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:14px;">&#128161; How Challenge-Response Works</h3>
+    <div class="ssh-flow">
+<span class="fl-client">Client</span>                                    <span class="fl-server">Server</span>
+  <span class="fl-arrow">|</span>  --- "I'm user golu" ------------------->  <span class="fl-arrow">|</span>
+  <span class="fl-arrow">|</span>  &lt;-- "Prove it: here's a random challenge" --  <span class="fl-arrow">|</span>
+  <span class="fl-arrow">|</span>  --- Signs challenge with private key ------->  <span class="fl-arrow">|</span>
+  <span class="fl-arrow">|</span>  &lt;-- "Signature matches public key! Welcome" --  <span class="fl-arrow">|</span>
+<span class="fl-note">   Private key stays local.  Only the signature goes over the wire.</span>
+    </div>
+    <p style="font-size:.88rem;color:rgba(255,255,255,.62);margin-top:8px;">The private key <strong style="color:var(--chalk-red)">never leaves your machine.</strong> Server only checks the math — did this signature come from the matching private key? No password, no brute-force vector.</p>
+  </div>
+</section>
+
+<!-- GROUP 2 — ssh-keygen -->
+<section>
+  <div class="step-badge">&#9315; Theory Group 2 &middot; 5 min</div>
+  <div class="topic-title">&#128272; ssh-keygen — RSA vs ED25519</div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:12px;">Generate Your Key Pair</h3>
+    <pre><code><span class="cm"># RECOMMENDED: Generate ED25519 key (fast, secure, small key size)</span>
+<span class="cmd">ssh-keygen</span> <span class="flg">-t</span> ed25519 <span class="flg">-C</span> <span class="str">"golu@company.com"</span>
+<span class="cm"># Saves to: ~/.ssh/id_ed25519       (private — NEVER share this!)</span>
+<span class="cm">#           ~/.ssh/id_ed25519.pub   (public  — this goes on server)</span>
+
+<span class="cm"># Always set a passphrase when prompted!</span>
+<span class="cm"># Enter passphrase (empty for no passphrase): *** use a strong one ***</span>
+
+<span class="cm"># Legacy RSA (4096 bit — for compatibility with old systems only)</span>
+<span class="cmd">ssh-keygen</span> <span class="flg">-t</span> rsa <span class="flg">-b</span> 4096 <span class="flg">-C</span> <span class="str">"golu@company.com"</span>
+<span class="cm"># Saves to: ~/.ssh/id_rsa,  ~/.ssh/id_rsa.pub</span>
+
+<span class="cm"># View your public key (safe to share)</span>
+<span class="cmd">cat</span> ~/.ssh/id_ed25519.pub
+<span class="cm"># Output: ssh-ed25519 AAAA...long-base64-string... golu@company.com</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);margin-top:8px;">
+    <h3 class="handwritten" style="color:var(--chalk-blue);margin-bottom:14px;">Algorithm Comparison</h3>
+    <table class="key-table">
+      <thead>
+        <tr>
+          <th>Algorithm</th>
+          <th>Key Size</th>
+          <th>Speed</th>
+          <th>Security</th>
+          <th>Use Case</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:var(--chalk-green);font-weight:bold;">ED25519</td>
+          <td>256 bits</td>
+          <td style="color:var(--chalk-green)">Very fast</td>
+          <td>128-bit equivalent</td>
+          <td style="color:var(--chalk-green)">Modern (recommended)</td>
+        </tr>
+        <tr>
+          <td>RSA 4096</td>
+          <td>4096 bits</td>
+          <td style="color:var(--chalk-orange)">Slower</td>
+          <td>128-bit equivalent</td>
+          <td>Legacy compatibility</td>
+        </tr>
+        <tr>
+          <td style="color:rgba(255,255,255,.4)">RSA 2048</td>
+          <td style="color:rgba(255,255,255,.4)">2048 bits</td>
+          <td style="color:rgba(255,255,255,.4)">Moderate</td>
+          <td style="color:var(--chalk-orange)">112-bit (minimum)</td>
+          <td style="color:rgba(255,255,255,.4)">Minimum acceptable</td>
+        </tr>
+        <tr>
+          <td style="color:var(--chalk-red);text-decoration:line-through;">RSA 1024</td>
+          <td style="color:var(--chalk-red)">1024 bits</td>
+          <td>—</td>
+          <td style="color:var(--chalk-red)">BROKEN</td>
+          <td style="color:var(--chalk-red)">Do NOT use</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- GROUP 3 — authorized_keys, known_hosts, config -->
+<section>
+  <div class="step-badge">&#9316; Theory Group 3 &middot; 5 min</div>
+  <div class="topic-title">&#128196; authorized_keys, known_hosts &amp; ~/.ssh/config</div>
+
+  <!-- authorized_keys -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:12px;">authorized_keys (Server Side)</h3>
+    <p style="font-size:.88rem;color:rgba(255,255,255,.62);margin-bottom:12px;">This file lives on the <strong>server</strong> at <code style="font-family:'Fira Code';color:var(--chalk-blue)">~/.ssh/authorized_keys</code>. It lists all public keys allowed to log in as this user.</p>
+    <pre><code><span class="cm"># Manual: append public key to server's authorized_keys</span>
+<span class="cmd">cat</span> ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+<span class="cmd">chmod</span> 600 ~/.ssh/authorized_keys  <span class="cm"># CRITICAL: must be 600 or SSH rejects it!</span>
+<span class="cmd">chmod</span> 700 ~/.ssh/                  <span class="cm"># Directory must be 700</span>
+
+<span class="cm"># Automated: ssh-copy-id (recommended — handles permissions automatically)</span>
+<span class="cmd">ssh-copy-id</span> <span class="flg">-i</span> ~/.ssh/id_ed25519.pub user@server
+
+<span class="cm"># Verify it was added</span>
+<span class="cmd">cat</span> ~/.ssh/authorized_keys</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- known_hosts -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-orange);">
+    <h3 class="handwritten" style="color:var(--chalk-orange);margin-bottom:12px;">known_hosts (Client Side)</h3>
+    <p style="font-size:.88rem;color:rgba(255,255,255,.62);margin-bottom:12px;">This file lives on your <strong>client machine</strong> at <code style="font-family:'Fira Code';color:var(--chalk-blue)">~/.ssh/known_hosts</code>. Remembers every server's fingerprint — MITM protection!</p>
+    <pre><code><span class="cm"># Auto-added on first connect with a prompt:</span>
+<span class="cm"># "The authenticity of host '...' can't be established."</span>
+<span class="cm"># "Are you sure you want to continue connecting? (yes/no)"</span>
+
+<span class="cm"># If server key CHANGES → WARNING (possible MITM attack!)</span>
+<span class="cm"># WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!</span>
+
+<span class="cm"># Remove stale/old key (e.g. after server rebuild)</span>
+<span class="cmd">ssh-keygen</span> <span class="flg">-R</span> hostname
+<span class="cmd">ssh-keygen</span> <span class="flg">-R</span> 192.168.1.10</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- ssh config -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:12px;">~/.ssh/config — Multi-Server Productivity</h3>
+    <p style="font-size:.88rem;color:rgba(255,255,255,.62);margin-bottom:12px;">Instead of typing <code style="font-family:'Fira Code'">ssh -i ~/.ssh/key ubuntu@192.168.1.10 -p 22</code> every time, define host aliases:</p>
+    <pre><code><span class="cm"># ~/.ssh/config</span>
+
+<span class="str">Host prod-web</span>
+    <span class="cmd">HostName</span>     192.168.1.10
+    <span class="cmd">User</span>         ubuntu
+    <span class="cmd">IdentityFile</span> ~/.ssh/id_ed25519
+    <span class="cmd">Port</span>         22
+
+<span class="str">Host bastion</span>
+    <span class="cmd">HostName</span>     bastion.company.com
+    <span class="cmd">User</span>         ec2-user
+    <span class="cmd">IdentityFile</span> ~/.ssh/company_key
+
+<span class="str">Host db-server</span>
+    <span class="cmd">HostName</span>     10.0.0.5
+    <span class="cmd">User</span>         admin
+    <span class="cmd">ProxyJump</span>    bastion    <span class="cm"># Jump through bastion host automatically!</span>
+
+<span class="cm"># Usage after config: just type the alias</span>
+<span class="cmd">ssh</span> prod-web           <span class="cm"># = ssh -i ~/.ssh/id_ed25519 ubuntu@192.168.1.10</span>
+<span class="cmd">ssh</span> db-server          <span class="cm"># = ssh through bastion → then to 10.0.0.5</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+</section>
+
+<!-- GROUP 4 — SSH Tunneling -->
+<section>
+  <div class="step-badge">&#9317; Theory Group 4 &middot; 5 min</div>
+  <div class="topic-title">&#128268; SSH Tunneling &amp; Port Forwarding</div>
+
+  <div class="content-box" style="border:2px dashed var(--chalk-white);margin-bottom:20px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:11px;">&#128161; Analogy: Secure Tube Through the Internet</h3>
+    <p class="handwritten" style="font-size:1.1rem;line-height:1.75;">
+      SSH tunnel = ek <span class="chalk-text">encrypted tube</span> jo kisi bhi port ka traffic andar se carry kar sakti hai.<br/>
+      Local forwarding: <span class="chalk-text">remote database</span> ko <span class="chalk-text">apne laptop</span> pe lao.<br/>
+      Remote forwarding: <span class="chalk-text">apni local dev app</span> ko <span class="chalk-text">public server</span> pe expose karo.
+    </p>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);">
+    <h3 class="handwritten" style="color:var(--chalk-blue);margin-bottom:12px;">Port Forwarding Commands</h3>
+    <pre><code><span class="cm"># LOCAL port forwarding: access remote service as if it's local</span>
+<span class="cm"># Access remote MySQL (port 3306) on your local machine</span>
+<span class="cmd">ssh</span> <span class="flg">-L</span> 3306:localhost:3306 user@db-server
+<span class="cm"># Now connect: mysql -h 127.0.0.1 -P 3306 (traffic flows through SSH)</span>
+
+<span class="cm"># Another example: local:8080 → remote:80</span>
+<span class="cmd">ssh</span> <span class="flg">-L</span> 8080:localhost:80 user@webserver
+<span class="cm"># Browse: http://localhost:8080 → sees the remote server's port 80</span>
+
+<span class="cm"># REMOTE port forwarding: expose local service on remote server</span>
+<span class="cmd">ssh</span> <span class="flg">-R</span> 8080:localhost:3000 user@public-server
+<span class="cm"># Now: public-server:8080 → your local machine's port 3000</span>
+
+<span class="cm"># DYNAMIC forwarding (SOCKS5 proxy — route ALL traffic)</span>
+<span class="cmd">ssh</span> <span class="flg">-D</span> 1080 user@gateway-server
+<span class="cm"># Configure browser to use SOCKS5 proxy at localhost:1080</span>
+
+<span class="cm"># Keep connection alive (prevent timeout)</span>
+<span class="cmd">ssh</span> <span class="flg">-o</span> ServerAliveInterval=60 user@server
+
+<span class="cm"># Background tunnel (-N = no command, -f = background)</span>
+<span class="cmd">ssh</span> <span class="flg">-N -f -L</span> 3306:localhost:3306 user@db-server</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="diagram-container" style="margin-top:20px;">
+    <p class="handwritten" style="color:var(--chalk-pink);font-size:1.25rem;margin-bottom:18px;">Local Port Forwarding Flow</p>
+    <div class="boot-chain">
+      <span class="boot-node" style="border-color:var(--chalk-yellow);color:var(--chalk-yellow)">Your Machine</span>
+      <span class="boot-arr">&#8594;</span>
+      <span class="boot-node" style="border-color:var(--chalk-white)">localhost:3306</span>
+      <span class="boot-arr">&#8594;</span>
+      <span class="boot-node" style="border-color:var(--chalk-blue);color:var(--chalk-blue)">SSH Encrypted Tunnel</span>
+      <span class="boot-arr">&#8594;</span>
+      <span class="boot-node" style="border-color:var(--chalk-green);color:var(--chalk-green)">db-server</span>
+      <span class="boot-arr">&#8594;</span>
+      <span class="boot-node" style="border-color:var(--chalk-green);color:var(--chalk-green)">MySQL :3306</span>
+    </div>
+    <p class="handwritten" style="margin-top:20px;font-size:1.05rem;">Database never exposed to internet. <span class="chalk-text">All traffic encrypted inside SSH.</span></p>
+  </div>
+</section>
+
+<!-- LIVE DEMO -->
+<section>
+  <div class="step-badge">&#9318; Live Demo &middot; 15 min</div>
+  <div class="topic-title">&#9654; Screen Pe Dekho, Terminal Pe Karo</div>
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+      <span class="char-name">Jagu</span>
+    </div>
+    <div class="speech-bubble" style="border-color:var(--chalk-blue)">"Golu, terminal kholo! <span class="chalk-text">Har step apne machine pe karo.</span> End mein tumhara server passwordless SSH ke saath ready hoga!"</div>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-yellow);">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:12px;">Step 1 — Generate ED25519 Key Pair</h3>
+    <pre><code><span class="cm"># Generate key — press Enter for default location, ENTER A PASSPHRASE!</span>
+<span class="cmd">ssh-keygen</span> <span class="flg">-t</span> ed25519 <span class="flg">-C</span> <span class="str">"your-email@example.com"</span>
+
+<span class="cm"># View what was created</span>
+<span class="cmd">ls</span> <span class="flg">-la</span> ~/.ssh/
+<span class="cm"># -rw-------  id_ed25519      &lt;-- private key (600 permissions)</span>
+<span class="cm"># -rw-r--r--  id_ed25519.pub  &lt;-- public key (can be shared)</span>
+
+<span class="cm"># View public key content</span>
+<span class="cmd">cat</span> ~/.ssh/id_ed25519.pub
+<span class="cm"># ssh-ed25519 AAAAC3Nza...very-long-base64... your-email@example.com</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-blue);">
+    <h3 class="handwritten" style="color:var(--chalk-blue);margin-bottom:12px;">Step 2 — Copy to Server &amp; Test Passwordless Login</h3>
+    <pre><code><span class="cm"># Option A: ssh-copy-id (easiest)</span>
+<span class="cmd">ssh-copy-id</span> <span class="flg">-i</span> ~/.ssh/id_ed25519.pub user@server-ip
+
+<span class="cm"># Option B: Manual (if ssh-copy-id not available)</span>
+<span class="cmd">cat</span> ~/.ssh/id_ed25519.pub | <span class="cmd">ssh</span> user@server <span class="str">"mkdir -p ~/.ssh &amp;&amp; chmod 700 ~/.ssh &amp;&amp; cat >> ~/.ssh/authorized_keys &amp;&amp; chmod 600 ~/.ssh/authorized_keys"</span>
+
+<span class="cm"># Test passwordless login</span>
+<span class="cmd">ssh</span> <span class="flg">-i</span> ~/.ssh/id_ed25519 user@server-ip
+<span class="cm"># Should connect WITHOUT asking for password! (only passphrase if set)</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:12px;">Step 3 — Configure ~/.ssh/config</h3>
+    <pre><code><span class="cm"># Create/edit ~/.ssh/config</span>
+<span class="cmd">nano</span> ~/.ssh/config   <span class="cm"># or vim, or any editor</span>
+
+<span class="cm"># Add these entries:</span>
+<span class="str">Host myserver</span>
+    <span class="cmd">HostName</span>     192.168.1.100
+    <span class="cmd">User</span>         ubuntu
+    <span class="cmd">IdentityFile</span> ~/.ssh/id_ed25519
+    <span class="cmd">Port</span>         22
+
+<span class="str">Host dev-box</span>
+    <span class="cmd">HostName</span>     10.0.0.50
+    <span class="cmd">User</span>         admin
+    <span class="cmd">IdentityFile</span> ~/.ssh/id_ed25519
+
+<span class="cm"># Now connect with just the alias</span>
+<span class="cmd">ssh</span> myserver
+<span class="cmd">ssh</span> dev-box</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-pink);">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:12px;">Step 4 — SSH Local Port Forwarding Demo</h3>
+    <pre><code><span class="cm"># Forward remote port 80 to your local port 8080</span>
+<span class="cmd">ssh</span> <span class="flg">-L</span> 8080:localhost:80 user@server-ip
+
+<span class="cm"># In another terminal — verify it works:</span>
+<span class="cmd">curl</span> http://localhost:8080
+<span class="cm"># You're now reading from the server's port 80!</span>
+
+<span class="cm"># Background tunnel (non-interactive)</span>
+<span class="cmd">ssh</span> <span class="flg">-N -f -L</span> 8080:localhost:80 user@server-ip
+<span class="cmd">curl</span> http://localhost:8080
+
+<span class="cm"># Kill the tunnel when done</span>
+<span class="cmd">pkill</span> <span class="flg">-f</span> <span class="str">"ssh -N"</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+</section>
+
+<!-- COMMON MISTAKES -->
+<section>
+  <div class="step-badge">&#9319; Common Mistakes &middot; 3 min</div>
+  <div class="topic-title">&#128683; Top Mistakes &amp; How to Fix Them</div>
+
+  <div class="mistake-pair">
+    <div class="m-label">&#10005; Mistake 1 — Using deprecated/weak key types</div>
+    <div class="m-block m-wrong">
+      <code>ssh-keygen -t rsa -b 1024    # RSA 1024: CRACKED / insecure
+ssh-keygen -t dsa            # DSA: deprecated, removed from OpenSSH 9.0
+ssh-keygen -t rsa -b 2048   # Minimum acceptable, not ideal</code>
+    </div>
+    <div class="m-block m-right">
+      <code>ssh-keygen -t ed25519 -C "email@example.com"   # Always ED25519 in 2026</code>
+    </div>
+  </div>
+
+  <div class="mistake-pair">
+    <div class="m-label">&#10005; Mistake 2 — Wrong permissions on ~/.ssh files</div>
+    <div class="m-block m-wrong">
+      <code>chmod 777 ~/.ssh/                   # SSH will REFUSE to use keys
+chmod 644 ~/.ssh/authorized_keys    # Too permissive — SSH rejects this
+chmod 644 ~/.ssh/id_ed25519        # Private key exposed to others!</code>
+    </div>
+    <div class="m-block m-right">
+      <code>chmod 700 ~/.ssh/                   # Directory: owner only
+chmod 600 ~/.ssh/authorized_keys    # Authorized keys: owner read/write
+chmod 600 ~/.ssh/id_ed25519        # Private key: owner read/write only
+chmod 644 ~/.ssh/id_ed25519.pub    # Public key: readable by all (OK)</code>
+    </div>
+  </div>
+
+  <div class="mistake-pair">
+    <div class="m-label">&#10005; Mistake 3 — Disabling password auth BEFORE testing key auth</div>
+    <div class="m-block m-wrong">
+      <code># DO NOT do this without verifying key login works first!
+echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+systemctl restart sshd
+# Now if your key fails → you are LOCKED OUT forever</code>
+    </div>
+    <div class="m-block m-right">
+      <code># Correct sequence:
+# 1. Copy key to server
+# 2. Test key login works: ssh -i ~/.ssh/id_ed25519 user@server
+# 3. Open a SECOND session and keep it alive
+# 4. THEN disable password auth + restart sshd
+# 5. Test from a NEW terminal — only then close the old session</code>
+    </div>
+  </div>
+</section>
+
+<!-- INTERVIEW QUESTIONS -->
+<section>
+  <div class="step-badge">&#9320; Interview Questions &middot; 5 min</div>
+  <div class="topic-title">&#127795; Interview Q &amp; A</div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q">
+      <div class="iq-num">1</div>
+      <div class="iq-text">How does SSH key authentication work? Explain the challenge-response flow.</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">The client sends its public key identity to the server. The server checks if that public key exists in <code style="font-family:'Fira Code'">~/.ssh/authorized_keys</code>. If found, the server generates a random challenge, encrypts it with the public key, and sends it to the client. Only the holder of the matching private key can decrypt it. The client signs the decrypted challenge with the private key and sends back the signature. The server verifies the signature using the public key — if it matches, access is granted. The private key never leaves the client machine.</div>
+  </div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q">
+      <div class="iq-num">2</div>
+      <div class="iq-text">What is the difference between authorized_keys and known_hosts?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a"><code style="font-family:'Fira Code'">authorized_keys</code> lives on the <strong>server</strong> — it lists public keys of all clients allowed to log in as that user. <code style="font-family:'Fira Code'">known_hosts</code> lives on the <strong>client</strong> — it stores the fingerprints of servers the client has connected to before. known_hosts protects against Man-in-the-Middle attacks: if a server's fingerprint changes unexpectedly, SSH warns you that the server may have been compromised.</div>
+  </div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q">
+      <div class="iq-num">3</div>
+      <div class="iq-text">How do you set up access from a jump/bastion host to a private server?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">In <code style="font-family:'Fira Code'">~/.ssh/config</code>, use the <code style="font-family:'Fira Code'">ProxyJump</code> directive. Example: <code style="font-family:'Fira Code'">Host private-db; HostName 10.0.0.5; ProxyJump bastion</code>. Then <code style="font-family:'Fira Code'">ssh private-db</code> will automatically SSH to the bastion first, then from bastion SSH to the private server — all in one command, transparently. The old way was ProxyCommand with netcat, but ProxyJump is simpler and recommended.</div>
+  </div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q">
+      <div class="iq-num">4</div>
+      <div class="iq-text">Why is ED25519 preferred over RSA 2048?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">ED25519 uses elliptic curve cryptography (Curve25519), which achieves 128-bit security with only a 256-bit key — far smaller than RSA 4096 which needs 4096 bits for similar security. ED25519 is significantly faster for both key generation and signature operations. The keys are tiny (68 chars vs 3200+ for RSA 4096), making them easy to store and transmit. It's also immune to several side-channel attacks that can affect RSA implementations. RSA is only preferred when connecting to very old systems that don't support ED25519.</div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section>
+  <div class="step-badge">&#9321; Quick Quiz &middot; 2 min</div>
+  <div class="topic-title">&#129337; Test Karo Apne Aap Ko</div>
+
+  <div class="content-box">
+    <div class="quiz-item">
+      <div class="quiz-q">What permissions must <code style="font-family:'Fira Code'">~/.ssh/authorized_keys</code> have?</div>
+      <div class="quiz-opts">
+        <button class="quiz-opt" onclick="quizAnswer(this,false)">777</button>
+        <button class="quiz-opt" onclick="quizAnswer(this,false)">644</button>
+        <button class="quiz-opt" onclick="quizAnswer(this,true)">600</button>
+        <button class="quiz-opt" onclick="quizAnswer(this,false)">400</button>
+      </div>
+    </div>
+
+    <div class="answer-key">
+      <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:9px;">Answer Explained:</h3>
+      <p style="font-size:.88rem;color:rgba(255,255,255,.72);line-height:1.65;"><strong style="color:var(--chalk-green)">600 (owner read+write, no one else)</strong> is correct. SSH is extremely strict — if <code style="font-family:'Fira Code'">authorized_keys</code> has any group or world permissions (644, 666, 777), SSH will refuse to use it. 400 (read-only) also works but is unnecessarily restrictive — you need write permission to add more keys. Same rule: <code style="font-family:'Fira Code'">~/.ssh/</code> directory must be 700.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ASSIGNMENT -->
+<section>
+  <div class="step-badge">&#9322; Assignment</div>
+  <div class="topic-title">&#128203; Ghar Ka Kaam</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-orange);">
+    <ul>
+      <li>Generate ED25519 key pair with a passphrase</li>
+      <li>Set up passwordless login to <code style="font-family:'Fira Code';color:var(--chalk-blue)">localhost</code> (or a VM) via <code style="font-family:'Fira Code';color:var(--chalk-blue)">ssh-copy-id</code></li>
+      <li>Configure <code style="font-family:'Fira Code';color:var(--chalk-blue)">~/.ssh/config</code> with at least 2 host entries</li>
+      <li>Set <code style="font-family:'Fira Code';color:var(--chalk-blue)">PasswordAuthentication no</code> in <code style="font-family:'Fira Code';color:var(--chalk-blue)">/etc/ssh/sshd_config</code> and verify key login still works</li>
+      <li><strong style="color:var(--chalk-yellow)">Bonus:</strong> Set up ssh-agent (<code style="font-family:'Fira Code';color:var(--chalk-blue)">eval $(ssh-agent) &amp;&amp; ssh-add ~/.ssh/id_ed25519</code>) — no more passphrase prompts per session</li>
+    </ul>
+  </div>
+</section>
+
+<!-- CLOSING CARDS -->
+<section>
+  <div class="topic-title">&#127942; Lesson Wrap-up</div>
+  <div class="closing-grid">
+    <div class="cc takeaway">
+      <div class="icon">&#9889;</div>
+      <div class="title">Key Takeaway</div>
+      <div class="body">Key-based SSH + PasswordAuthentication no = your servers become brute-force proof. One config change that takes 5 minutes and provides mathematically impossible-to-break security.</div>
+    </div>
+    <div class="cc interview">
+      <div class="icon">&#127803;</div>
+      <div class="title">Interview Question</div>
+      <div class="body">Explain how SSH key authentication works (challenge-response flow). Walk through: client sends identity → server challenges → client signs with private key → server verifies with public key.</div>
+    </div>
+    <div class="cc assign">
+      <div class="icon">&#128203;</div>
+      <div class="title">Assignment</div>
+      <div class="body">Generate ED25519 key, copy to server, disable password auth, test. Sequence matters: verify key login works BEFORE disabling password auth or you WILL lock yourself out.</div>
+    </div>
+    <div class="cc challenge">
+      <div class="icon">&#127981;</div>
+      <div class="title">Challenge</div>
+      <div class="body">Set up ProxyJump through a bastion host to access a private network server. Configure ~/.ssh/config with Host bastion, then Host private-server using ProxyJump bastion.</div>
+    </div>
+    <div class="cc mistake">
+      <div class="icon">&#9888;</div>
+      <div class="title">Critical Mistake to Avoid</div>
+      <div class="body">NEVER disable PasswordAuthentication before verifying key login works from a fresh terminal. Keep one existing session alive as your escape route while testing.</div>
+    </div>
+    <div class="cc protip">
+      <div class="icon">&#128161;</div>
+      <div class="title">Pro Tip</div>
+      <div class="body">Use ssh-agent + ssh-add to load keys once per session. No passphrase prompts but still fully secure — the key stays in memory, never on disk unencrypted. Add to your shell profile for convenience.</div>
+    </div>
+  </div>
+</section>
+
+</div><!-- end tab-lesson -->
+
+<!-- ══════════════ TAB 2 — CHEAT SHEET ══════════════ -->
+<div class="tab-pane" id="tab-cheatsheet">
+
+<section>
+  <div class="topic-title">&#128203; SSH Quick Reference</div>
+
+  <!-- Table 1: ssh-keygen -->
+  <div class="cs-title">1. ssh-keygen Commands</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>ssh-keygen -t ed25519 -C "email"</td><td>Generate ED25519 key pair (recommended)</td></tr>
+      <tr><td>ssh-keygen -t rsa -b 4096 -C "email"</td><td>Generate RSA 4096 key (legacy compat)</td></tr>
+      <tr><td>ssh-keygen -p -f ~/.ssh/id_ed25519</td><td>Change passphrase on existing key</td></tr>
+      <tr><td>ssh-keygen -l -f ~/.ssh/id_ed25519.pub</td><td>Show fingerprint of public key</td></tr>
+      <tr><td>ssh-keygen -R hostname</td><td>Remove host from known_hosts</td></tr>
+      <tr><td>ssh-keygen -y -f ~/.ssh/id_ed25519</td><td>Extract public key from private key</td></tr>
+      <tr><td>cat ~/.ssh/id_ed25519.pub</td><td>View public key (safe to share)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Table 2: SSH connection commands -->
+  <div class="cs-title">2. SSH Connection Commands</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>ssh user@host</td><td>Basic SSH connect</td></tr>
+      <tr><td>ssh -i ~/.ssh/id_ed25519 user@host</td><td>Connect with specific key</td></tr>
+      <tr><td>ssh -p 2222 user@host</td><td>Connect on non-standard port</td></tr>
+      <tr><td>ssh -v user@host</td><td>Verbose mode (debug connection issues)</td></tr>
+      <tr><td>ssh -L 8080:localhost:80 user@host</td><td>Local port forwarding (bring remote to local)</td></tr>
+      <tr><td>ssh -R 8080:localhost:3000 user@host</td><td>Remote port forwarding (expose local to remote)</td></tr>
+      <tr><td>ssh -D 1080 user@host</td><td>Dynamic SOCKS5 proxy forwarding</td></tr>
+      <tr><td>ssh -N -f -L 3306:localhost:3306 user@host</td><td>Background tunnel (no command, detached)</td></tr>
+      <tr><td>ssh -o ServerAliveInterval=60 user@host</td><td>Keep connection alive (send heartbeat)</td></tr>
+      <tr><td>ssh -J bastion user@private-host</td><td>Jump through bastion (ProxyJump)</td></tr>
+      <tr><td>ssh-copy-id -i ~/.ssh/id_ed25519.pub user@host</td><td>Copy public key to server automatically</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Table 3: authorized_keys and permissions -->
+  <div class="cs-title">3. authorized_keys &amp; Permission Setup</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys</td><td>Manually add public key to server</td></tr>
+      <tr><td>chmod 700 ~/.ssh/</td><td>Correct permissions for .ssh directory</td></tr>
+      <tr><td>chmod 600 ~/.ssh/authorized_keys</td><td>Correct permissions for authorized_keys</td></tr>
+      <tr><td>chmod 600 ~/.ssh/id_ed25519</td><td>Correct permissions for private key</td></tr>
+      <tr><td>chmod 644 ~/.ssh/id_ed25519.pub</td><td>Correct permissions for public key</td></tr>
+      <tr><td>ls -la ~/.ssh/</td><td>Verify permissions on .ssh files</td></tr>
+      <tr><td>eval $(ssh-agent)</td><td>Start ssh-agent in current shell</td></tr>
+      <tr><td>ssh-add ~/.ssh/id_ed25519</td><td>Load key into ssh-agent (once per session)</td></tr>
+      <tr><td>ssh-add -l</td><td>List keys loaded in ssh-agent</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Table 4: ssh config options -->
+  <div class="cs-title">4. ~/.ssh/config File Options</div>
+  <table class="cmd-table">
+    <thead><tr><th>Option</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>Host &lt;alias&gt;</td><td>Define a host alias block</td></tr>
+      <tr><td>HostName &lt;ip/hostname&gt;</td><td>Actual server IP or FQDN</td></tr>
+      <tr><td>User &lt;username&gt;</td><td>Remote username to login as</td></tr>
+      <tr><td>IdentityFile ~/.ssh/keyfile</td><td>Which private key to use for this host</td></tr>
+      <tr><td>Port &lt;number&gt;</td><td>SSH port (default 22)</td></tr>
+      <tr><td>ProxyJump &lt;bastion-alias&gt;</td><td>Jump through bastion host automatically</td></tr>
+      <tr><td>ServerAliveInterval 60</td><td>Send keepalive every 60 seconds</td></tr>
+      <tr><td>ServerAliveCountMax 3</td><td>Disconnect after 3 missed keepalives</td></tr>
+      <tr><td>ForwardAgent yes</td><td>Forward ssh-agent to remote (use with caution)</td></tr>
+      <tr><td>StrictHostKeyChecking no</td><td>Skip known_hosts check (scripting only — risky)</td></tr>
+      <tr><td>Host * (wildcard)</td><td>Apply settings to all hosts</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</div><!-- end tab-cheatsheet -->
+
+<!-- ══════════════ TAB 3 — LAB ══════════════ -->
+<div class="tab-pane" id="tab-lab">
+
+<section>
+  <div class="topic-title">&#129514; Hands-On Lab — SSH Key Setup</div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);margin-bottom:28px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:9px;">Lab Overview</h3>
+    <p style="font-size:.9rem;color:rgba(255,255,255,.7);line-height:1.6;">Complete all 6 steps to set up fully passwordless, key-based SSH access. You need a Linux machine (VM, WSL, or any cloud instance). Localhost testing works for steps 1-5.</p>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="lab-prog-wrap">
+    <span class="handwritten" style="color:var(--chalk-yellow);font-size:1rem;white-space:nowrap;">Progress:</span>
+    <div class="lab-bar"><div class="lab-fill" id="lab-fill"></div></div>
+    <span id="lab-progress-text" style="font-family:'Fira Code';font-size:.82rem;color:var(--chalk-blue);white-space:nowrap;">0 / 6</span>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">1</div>
+      <div class="lab-title">Generate ED25519 key pair</div>
+      <input type="checkbox" class="lab-chk" onchange="updateProgress()"/>
+    </div>
+    <pre><code><span class="cmd">ssh-keygen</span> <span class="flg">-t</span> ed25519 <span class="flg">-C</span> <span class="str">"your-email@example.com"</span>
+<span class="cm"># Accept default path (~/.ssh/id_ed25519)</span>
+<span class="cm"># Enter a passphrase (recommended!)</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">Acceptance: <code style="font-family:'Fira Code'">ls -la ~/.ssh/</code> shows both <code style="font-family:'Fira Code'">id_ed25519</code> (600) and <code style="font-family:'Fira Code'">id_ed25519.pub</code> (644)</div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">2</div>
+      <div class="lab-title">View and understand public key format</div>
+      <input type="checkbox" class="lab-chk" onchange="updateProgress()"/>
+    </div>
+    <pre><code><span class="cmd">cat</span> ~/.ssh/id_ed25519.pub
+<span class="cm"># Format: ssh-ed25519 &lt;base64-key&gt; &lt;comment&gt;</span>
+<span class="cm"># The base64 string is the actual public key material</span>
+<span class="cmd">ssh-keygen</span> <span class="flg">-l -f</span> ~/.ssh/id_ed25519.pub
+<span class="cm"># Shows fingerprint: 256 SHA256:... your-email (ED25519)</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">Acceptance: You can see the fingerprint and understand that public key has 3 parts: algorithm, base64 key data, comment</div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">3</div>
+      <div class="lab-title">Copy public key to authorized_keys (localhost or VM)</div>
+      <input type="checkbox" class="lab-chk" onchange="updateProgress()"/>
+    </div>
+    <pre><code><span class="cm"># For localhost testing:</span>
+<span class="cmd">cat</span> ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+<span class="cmd">chmod</span> 600 ~/.ssh/authorized_keys
+<span class="cmd">chmod</span> 700 ~/.ssh/
+
+<span class="cm"># For a remote server:</span>
+<span class="cmd">ssh-copy-id</span> <span class="flg">-i</span> ~/.ssh/id_ed25519.pub user@server-ip
+
+<span class="cm"># Verify</span>
+<span class="cmd">cat</span> ~/.ssh/authorized_keys</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">Acceptance: <code style="font-family:'Fira Code'">cat ~/.ssh/authorized_keys</code> shows your public key. Permissions: directory 700, file 600</div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">4</div>
+      <div class="lab-title">Test passwordless login</div>
+      <input type="checkbox" class="lab-chk" onchange="updateProgress()"/>
+    </div>
+    <pre><code><span class="cm"># Test with explicit key (localhost)</span>
+<span class="cmd">ssh</span> <span class="flg">-i</span> ~/.ssh/id_ed25519 $(whoami)@localhost
+
+<span class="cm"># Or for a remote server</span>
+<span class="cmd">ssh</span> <span class="flg">-i</span> ~/.ssh/id_ed25519 user@server-ip
+
+<span class="cm"># Should prompt for passphrase (if set), NOT password</span>
+<span class="cm"># If asked for password → check authorized_keys &amp; permissions</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">Acceptance: You connect without being asked for your system password. Only passphrase (if you set one) is acceptable</div>
+  </div>
+
+  <!-- Step 5 -->
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">5</div>
+      <div class="lab-title">Write ~/.ssh/config with 2 host entries</div>
+      <input type="checkbox" class="lab-chk" onchange="updateProgress()"/>
+    </div>
+    <pre><code><span class="cmd">nano</span> ~/.ssh/config   <span class="cm"># create or edit</span>
+
+<span class="str">Host local-test</span>
+    <span class="cmd">HostName</span>     127.0.0.1
+    <span class="cmd">User</span>         <span class="str">your-username</span>
+    <span class="cmd">IdentityFile</span> ~/.ssh/id_ed25519
+
+<span class="str">Host my-server</span>
+    <span class="cmd">HostName</span>     192.168.x.x
+    <span class="cmd">User</span>         ubuntu
+    <span class="cmd">IdentityFile</span> ~/.ssh/id_ed25519
+    <span class="cmd">Port</span>         22
+
+<span class="cm"># Test the alias</span>
+<span class="cmd">ssh</span> local-test</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">Acceptance: <code style="font-family:'Fira Code'">ssh local-test</code> connects without specifying any flags — alias resolves automatically</div>
+  </div>
+
+  <!-- Step 6 -->
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">6</div>
+      <div class="lab-title">Test SSH local port forwarding (ssh -L)</div>
+      <input type="checkbox" class="lab-chk" onchange="updateProgress()"/>
+    </div>
+    <pre><code><span class="cm"># If you have a remote server with a web server (port 80):</span>
+<span class="cmd">ssh</span> <span class="flg">-L</span> 8888:localhost:80 user@server-ip
+
+<span class="cm"># In another terminal</span>
+<span class="cmd">curl</span> http://localhost:8888   <span class="cm"># &lt;-- fetches from remote server's port 80!</span>
+
+<span class="cm"># Localhost demo (forward port to itself)</span>
+<span class="cmd">python3</span> <span class="flg">-m</span> http.server 9090 &amp;     <span class="cm"># start a simple server on 9090</span>
+<span class="cmd">ssh</span> <span class="flg">-L</span> 7777:localhost:9090 local-test   <span class="cm"># tunnel 7777 → 9090</span>
+<span class="cmd">curl</span> http://localhost:7777              <span class="cm"># should see directory listing</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">Acceptance: <code style="font-family:'Fira Code'">curl http://localhost:7777</code> (or 8888) returns content from the tunneled port. Traffic flows through the SSH tunnel.</div>
+  </div>
+
+</section>
+</div><!-- end tab-lab -->
+
+<!-- FOOTER -->
+<footer class="footer">
+  <p>M01 &middot; U01 &middot; Day 09 &mdash; SSH &amp; Secure Remote Access | DevOps &amp; Platform Engineering 2026</p>
+  <p style="margin-top:8px;"><a href="https://github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap">github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap</a></p>
+</footer>
+
+<!-- LESSON NAVIGATION -->
+<div class="lesson-nav">
+  <div class="nav-inner">
+    <a href="../day-08/L07-user-and-group-management.html" class="nav-btn prev">&larr; Day 8 &mdash; User &amp; Group Management</a>
+    <a href="../../index.html" class="nav-btn up">&#8593; Curriculum</a>
+    <span class="nav-btn next disabled">Next &rarr;</span>
+  </div>
+</div>
+
+</div><!-- end .blackboard -->
+
+<script>
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function copyCode(btn) {
+    const pre = btn.closest('pre');
+    const code = pre.querySelector('code');
+    const text = code.innerText || code.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 2000);
+    }).catch(() => {
+      btn.textContent = 'Error';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+    });
+  }
+
+  function quizAnswer(btn, correct) {
+    const opts = btn.closest('.quiz-opts').querySelectorAll('.quiz-opt');
+    opts.forEach(o => o.style.pointerEvents = 'none');
+    btn.classList.add(correct ? 'correct' : 'wrong');
+    if (!correct) {
+      opts.forEach(o => {
+        if (o.getAttribute('onclick') && o.getAttribute('onclick').includes('true')) {
+          o.classList.add('correct');
+        }
+      });
+    }
+  }
+
+  function toggleIQ(el) {
+    el.classList.toggle('open');
+  }
+
+  function updateProgress() {
+    const checks = document.querySelectorAll('#tab-lab .lab-chk');
+    const done = Array.from(checks).filter(c => c.checked).length;
+    const total = checks.length;
+    const pct = total > 0 ? (done / total) * 100 : 0;
+    const fill = document.getElementById('lab-fill');
+    const text = document.getElementById('lab-progress-text');
+    if (fill) fill.style.width = pct + '%';
+    if (text) text.textContent = done + ' / ' + total;
+  }
+
+  // ─── Back to top ──────────────────────────────────────────────
+  (function() {
+    var btn = document.createElement('button');
+    btn.className = 'to-top';
+    btn.innerHTML = '&#8593;';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.onclick = function() { window.scrollTo({ top:0, behavior:'smooth' }); };
+    document.body.appendChild(btn);
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        window.requestAnimationFrame(function() {
+          btn.classList.toggle('visible', window.scrollY > 400);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+  })();
+
+</script>
+</body>
+</html>

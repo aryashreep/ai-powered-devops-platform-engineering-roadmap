@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Powered DevOps &amp; Platform Engineering — Curriculum</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-blackboard: #0a0e14;
+    --chalk-white:  #f1f2f6;
+    --chalk-yellow: #feca57;
+    --chalk-blue:   #48dbfb;
+    --chalk-green:  #1dd1a1;
+    --chalk-pink:   #ff9ff3;
+    --chalk-orange: #ff9f43;
+    --chalk-red:    #ff6b6b;
+    --wood-frame:   #2f3542;
+    --surface:      rgba(255,255,255,0.04);
+    --card-bg:      rgba(255,255,255,0.06);
+  }
+  @media print {
+    body { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; background:var(--bg-blackboard)!important; }
+    .blackboard { border:none!important; box-shadow:none!important; width:100%!important; margin:0!important; }
+    .module-card { page-break-inside:avoid; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg-blackboard); color:var(--chalk-white); font-family:'Inter',sans-serif; padding:20px; min-height:100vh; }
+  .blackboard { max-width:1100px; margin:0 auto; border:12px solid var(--wood-frame); padding:40px 50px; box-shadow:0 30px 60px rgba(0,0,0,.8); background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px); background-size:30px 30px; }
+
+  /* HEADER */
+  .author-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--chalk-yellow); padding-bottom:20px; margin-bottom:30px; }
+  .author-info h1 { font-family:'Architects Daughter',cursive; color:var(--chalk-yellow); font-size:2rem; line-height:1.2; }
+  .author-info p  { font-family:'Architects Daughter',cursive; color:var(--chalk-white); font-size:1.05rem; margin-top:6px; }
+  .author-contact { text-align:right; font-family:'Fira Code',monospace; font-size:.78rem; color:var(--chalk-blue); }
+  .author-contact a { color:var(--chalk-blue); text-decoration:none; }
+  .contact-item { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:3px; }
+
+  /* META */
+  .meta-bar { display:flex; justify-content:center; gap:12px; margin-bottom:32px; flex-wrap:wrap; }
+  .meta-badge { font-family:'Fira Code',monospace; font-size:.78rem; padding:5px 14px; border-radius:20px; border:1px solid; }
+  .meta-badge.m1 { border-color:var(--chalk-yellow); color:var(--chalk-yellow); }
+  .meta-badge.m2 { border-color:var(--chalk-blue);  color:var(--chalk-blue); }
+  .meta-badge.m3 { border-color:var(--chalk-green); color:var(--chalk-green); }
+
+    /* MODULES */
+  .modules-title { font-family:'Architects Daughter',cursive; text-align:center; font-size:2rem; color:var(--chalk-yellow); text-transform:uppercase; margin-bottom:30px; letter-spacing:2px; }
+
+  .module-card { background:var(--surface); border:1px solid rgba(255,255,255,.08); border-radius:16px; margin-bottom:14px; overflow:hidden; transition:border-color .2s, box-shadow .2s; }
+  .module-card:hover { border-color:rgba(255,255,255,.18); box-shadow:0 8px 24px rgba(0,0,0,.3); }
+
+  .module-hdr { display:flex; align-items:center; gap:14px; padding:16px 24px; cursor:pointer; user-select:none; transition:background .15s; }
+  .module-hdr:hover { background:rgba(255,255,255,.03); }
+  .module-hdr .arrow { color:rgba(255,255,255,.25); font-size:1.1rem; transition:transform .25s ease; flex-shrink:0; }
+  .module-card.open .module-hdr .arrow { transform:rotate(90deg); color:var(--chalk-yellow); }
+  .module-code { font-family:'Fira Code',monospace; font-size:.78rem; color:var(--chalk-blue); background:rgba(72,219,251,.1); padding:3px 10px; border-radius:6px; flex-shrink:0; }
+  .module-name { font-family:'Architects Daughter',cursive; font-size:1.15rem; flex:1; line-height:1.3; }
+  .module-dur { font-family:'Fira Code',monospace; font-size:.72rem; color:rgba(255,255,255,.4); white-space:nowrap; }
+  .module-badge { font-family:'Fira Code',monospace; font-size:.65rem; padding:3px 9px; border-radius:12px; border:1px solid; white-space:nowrap; }
+  .module-badge.cert { border-color:var(--chalk-green); color:var(--chalk-green); }
+  .module-badge.diff { border-color:var(--chalk-pink); color:var(--chalk-pink); }
+  .module-badge.front { border-color:var(--chalk-orange); color:var(--chalk-orange); }
+
+  /* UNITS & LESSONS (collapsible body) */
+  .module-body { display:none; padding:0 24px 20px; }
+  .module-card.open .module-body { display:block; }
+  .module-body table { width:100%; border-collapse:collapse; margin-top:12px; }
+  .module-body td { padding:8px 14px; border-bottom:1px solid rgba(255,255,255,.06); vertical-align:top; }
+  .module-body td:first-child { font-family:'Fira Code',monospace; font-size:.78rem; color:var(--chalk-pink); width:200px; white-space:nowrap; }
+  .module-body td:last-child { font-size:.85rem; line-height:1.7; color:rgba(255,255,255,.75); }
+  .module-body a, .module-body a:visited { color:var(--chalk-blue); text-decoration:none; transition:color .15s; }
+  .module-body a:hover { color:var(--chalk-yellow); text-decoration:underline; }
+  .module-body a::after { content:'\u2197'; font-size:.65rem; margin-left:3px; color:rgba(255,255,255,.35); }
+  .lesson-dot { display:inline-block; width:4px; height:4px; border-radius:50%; margin:0 6px 0 0; vertical-align:middle; }
+  .lesson-dot.has-html { background:var(--chalk-green); }
+  .lesson-dot.no-html { background:rgba(255,255,255,.15); }
+  .unit-header { font-family:'Architects Daughter',cursive; color:var(--chalk-yellow); font-size:.95rem; margin:16px 0 6px; display:flex; align-items:center; gap:8px; }
+  .unit-header:first-child { margin-top:0; }
+  .unit-header .u-code { font-family:'Fira Code',monospace; font-size:.72rem; color:var(--chalk-blue); background:rgba(72,219,251,.08); padding:2px 8px; border-radius:4px; }
+  .lesson-list { display:flex; flex-wrap:wrap; gap:4px 10px; padding:2px 0 8px 14px; border-left:2px solid rgba(255,255,255,.08); margin-bottom:10px; }
+  .lesson-list:last-child { margin-bottom:0; }
+  .lesson-item { font-size:.83rem; line-height:1.65; }
+
+  /* DAYS TABLE (M01) */
+  .days-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:6px; margin-top:12px; }
+  .day-cell { padding:6px 10px; border-radius:6px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); font-size:.78rem; }
+  .day-cell a { color:var(--chalk-blue); }
+  .day-cell a:hover { color:var(--chalk-yellow); }
+  .day-cell .day-num { font-family:'Fira Code',monospace; font-size:.7rem; color:rgba(255,255,255,.4); }
+
+  /* CAPSTONES */
+  .capstone-card { background:var(--surface); border:2px solid var(--chalk-orange); border-radius:14px; padding:18px 22px; margin:10px 0; }
+  .capstone-card .c-num { font-family:'Architects Daughter',cursive; color:var(--chalk-orange); font-size:1.1rem; margin-bottom:6px; }
+  .capstone-card .c-body { font-size:.85rem; color:rgba(255,255,255,.6); line-height:1.65; }
+  .capstone-card .c-after { display:inline-block; font-family:'Fira Code',monospace; font-size:.72rem; color:var(--chalk-green); background:rgba(29,209,161,.1); padding:2px 8px; border-radius:4px; margin-right:6px; }
+
+  /* TEACHING */
+  .teach-box { border:2px dashed rgba(255,255,255,.12); border-radius:14px; padding:20px 24px; margin-top:30px; text-align:center; }
+  .teach-box p { font-family:'Architects Daughter',cursive; font-size:1.1rem; }
+  .teach-box .flow { font-family:'Fira Code',monospace; font-size:.85rem; color:var(--chalk-blue); margin:10px 0; }
+
+  /* FOOTER */
+  .footer { text-align:center; color:#555; margin-top:50px; font-family:'Architects Daughter',cursive; border-top:1px solid rgba(255,255,255,.09); padding-top:20px; }
+  .footer a { color:var(--chalk-blue); text-decoration:none; }
+
+  @media(max-width:720px) {
+    .blackboard { padding:20px 14px; }
+    .author-header { flex-direction:column; gap:12px; }
+    .author-contact { text-align:left; }
+    .author-contact .contact-item { justify-content:flex-start; }
+    .module-hdr { flex-wrap:wrap; }
+    .module-dur { flex-basis:100%; margin-left:34px; }
+    .module-body td:first-child { width:auto; display:block; }
+    .days-grid { grid-template-columns:1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="blackboard">
+
+<!-- AUTHOR HEADER -->
+<header class="author-header">
+  <div class="author-info">
+    <h1>AI Powered DevOps &amp;<br>Platform Engineering</h1>
+    <p>Curriculum Index </p>
+  </div>
+  <div class="author-contact">
+    <div class="contact-item">&#128188; <a href="https://www.linkedin.com/in/aryashreepritikrishna/">linkedin.com/in/aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128250; <a href="https://www.youtube.com/@aryashreepritikrishna">youtube.com/@aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128231; <a href="mailto:aryashreep@gmail.com">aryashreep@gmail.com</a></div>
+  </div>
+</header>
+
+<!-- META -->
+<div class="meta-bar">
+  <span class="meta-badge m1">16 Modules</span>
+  <span class="meta-badge m2">65 Units</span>
+  <span class="meta-badge m3">121+ Lessons</span>
+</div>
+
+<!-- ========== MODULES ========== -->
+<h2 class="modules-title">&#128218; Curriculum Modules</h2>
+
+<!-- M01 -->
+<div class="module-card open">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M01</span>
+    <span class="module-name">Foundations</span>
+    <span class="module-dur">8&ndash;10 days</span>
+    <span class="module-badge cert">Linux/networking baseline</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">Linux Internals</span></div>
+    <div class="days-grid">
+      <div class="day-cell"><span class="day-num">day-01</span><br><a href="M01-foundations/day-01/L01-linux-architecture.html">Linux Foundation &amp; Architecture</a></div>
+      <div class="day-cell"><span class="day-num">day-02</span><br><a href="M01-foundations/day-02/L02-essential-commands.html">Essential Commands</a></div>
+      <div class="day-cell"><span class="day-num">day-03</span><br><a href="M01-foundations/day-03/L04-file-system-hierarchy.html">File System Hierarchy</a></div>
+      <div class="day-cell"><span class="day-num">day-04</span><br>Text Editors <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-05</span><br><a href="M01-foundations/day-05/L03-text-files-and-redirection.html">Text Files &amp; Redirection</a></div>
+      <div class="day-cell"><span class="day-num">day-06</span><br><a href="M01-foundations/day-06/L05-boot-and-init.html">Boot &amp; Init</a></div>
+      <div class="day-cell"><span class="day-num">day-07</span><br>Processes <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-08</span><br><a href="M01-foundations/day-08/L07-user-and-group-management.html">User &amp; Group Management</a></div>
+      <div class="day-cell"><span class="day-num">day-09</span><br>Permissions &amp; Ownership <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-10</span><br><a href="M01-foundations/day-10/L09-ssh-and-remote-access.html">SSH &amp; Remote Access</a></div>
+      <div class="day-cell"><span class="day-num">day-11</span><br>Diagnosis &amp; Troubleshooting <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-12</span><br>Namespaces &amp; Cgroups <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-13</span><br>Filesystems &amp; LVM <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+    </div>
+    <div class="unit-header"><span class="u-code">Networking</span></div>
+    <div class="days-grid">
+      <div class="day-cell"><span class="day-num">day-14</span><br>Models &amp; Addressing <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-15</span><br>DNS <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-16</span><br>Transport (TCP/UDP) <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-17</span><br>HTTP &amp; TLS <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-18</span><br>Edge &amp; eBPF <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+    </div>
+    <div class="unit-header"><span class="u-code">Automation &amp; Scripting</span></div>
+    <div class="days-grid">
+      <div class="day-cell"><span class="day-num">day-19</span><br>The One-Language Rule <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-20</span><br>Bash for Ops <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-21</span><br>Python for Ops <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+    </div>
+    <div class="unit-header"><span class="u-code">Git</span></div>
+    <div class="days-grid">
+      <div class="day-cell"><span class="day-num">day-22</span><br>Git Object Model <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-23</span><br>Branching &amp; History <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-24</span><br>Hygiene <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+      <div class="day-cell"><span class="day-num">day-25</span><br>Signed Commits <span style="font-size:.65rem;color:rgba(255,255,255,.35);font-family:'Fira Code'">(md)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- M02 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M02</span>
+    <span class="module-name">Everything-as-Code Mindset</span>
+    <span class="module-dur">2&ndash;3 days</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Core Principles</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Declarative vs Imperative</span>
+      <span class="lesson-item">L02 &mdash; Idempotency</span>
+      <span class="lesson-item">L03 &mdash; Immutability</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> As-Code Everywhere</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; The Spectrum</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Change Discipline</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; PR-Driven Change</span>
+    </div>
+  </div>
+</div>
+
+<!-- M03 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M03</span>
+    <span class="module-name">CI/CD (Pipeline as Code)</span>
+    <span class="module-dur">5&ndash;6 days</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> CI/CD Fundamentals</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; The Three CDs</span>
+      <span class="lesson-item">L02 &mdash; Pipeline Anatomy</span>
+      <span class="lesson-item">L03 &mdash; Correct Stage Order</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Tooling</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; GitHub Actions (Primary)</span>
+      <span class="lesson-item">L02 &mdash; Advanced Workflows</span>
+      <span class="lesson-item">L03 &mdash; Secrets &amp; Auth</span>
+      <span class="lesson-item">L04 &mdash; GitLab CI &amp; Jenkins</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Artifacts &amp; Registries</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Versioning &amp; Promotion</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> CI as Attack Surface</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Hardening the Pipeline</span>
+      <span class="lesson-item">L02 &mdash; Known Attack Patterns</span>
+    </div>
+  </div>
+</div>
+
+<!-- M04 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M04</span>
+    <span class="module-name">Containers</span>
+    <span class="module-dur">4&ndash;5 days</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Docker Fundamentals</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Core Objects</span>
+      <span class="lesson-item">L02 &mdash; Dockerfile Mastery</span>
+      <span class="lesson-item">L03 &mdash; Small Images</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Image Hardening</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Hardening Checklist</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> OCI &amp; Ecosystem</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Standards &amp; Registries</span>
+      <span class="lesson-item">L02 &mdash; Scanning</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> Daemonless / Rootless</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Podman</span>
+    </div>
+  </div>
+</div>
+
+<!-- M05 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M05</span>
+    <span class="module-name">Infrastructure as Code (IaC)</span>
+    <span class="module-dur">6&ndash;7 days</span>
+    <span class="module-badge cert">Terraform Associate</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Concepts &amp; Terraform/OpenTofu Basics</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Why IaC &amp; The Workflow</span>
+      <span class="lesson-item">L02 &mdash; HCL</span>
+      <span class="lesson-item">L03 &mdash; Versioning &amp; Graph</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> State</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; State Fundamentals</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Modules &amp; Composition</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Authoring Modules</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> Pulumi &amp; Ansible</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Pulumi</span>
+      <span class="lesson-item">L02 &mdash; Ansible</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U05</span> Testing &amp; Safety</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Guardrails</span>
+      <span class="lesson-item">L02 &mdash; Reviewing AI-Generated Terraform</span>
+    </div>
+  </div>
+</div>
+
+<!-- M06 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M06</span>
+    <span class="module-name">Kubernetes (Core)</span>
+    <span class="module-dur">8&ndash;10 days</span>
+    <span class="module-badge cert">CKA v1.35</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Architecture &amp; Installation <span style="font-family:'Fira Code';font-size:.68rem;color:var(--chalk-blue);">(CKA 25%)</span></div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Cluster Components</span>
+      <span class="lesson-item">L02 &mdash; Lifecycle</span>
+      <span class="lesson-item">L03 &mdash; Install Tooling</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Workloads &amp; Scheduling <span style="font-family:'Fira Code';font-size:.68rem;color:var(--chalk-blue);">(CKA 15%)</span></div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Workload Objects</span>
+      <span class="lesson-item">L02 &mdash; Config &amp; Health</span>
+      <span class="lesson-item">L03 &mdash; Scheduling</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Storage <span style="font-family:'Fira Code';font-size:.68rem;color:var(--chalk-blue);">(CKA 10%)</span></div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Persistence</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> Services &amp; Networking <span style="font-family:'Fira Code';font-size:.68rem;color:var(--chalk-blue);">(CKA 20%)</span></div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Service &amp; DNS</span>
+      <span class="lesson-item">L02 &mdash; Ingress &amp; Gateway API</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U05</span> Troubleshooting <span style="font-family:'Fira Code';font-size:.68rem;color:var(--chalk-blue);">(CKA 30%)</span></div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Systematic Debugging</span>
+      <span class="lesson-item">L02 &mdash; Common Failures</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U06</span> Packaging</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Helm &amp; Kustomize</span>
+      <span class="lesson-item">L02 &mdash; Node Autoscaling</span>
+    </div>
+  </div>
+</div>
+
+<!-- M07 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M07</span>
+    <span class="module-name">Kubernetes (Advanced) &amp; Cloud-Native</span>
+    <span class="module-dur">6&ndash;7 days</span>
+    <span class="module-badge cert">feeds CKS</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Extending Kubernetes</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; CRDs &amp; Operators</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Service Mesh</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Mesh Fundamentals</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> eBPF Networking &amp; Security</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Cilium</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> Multi-Tenancy &amp; Isolation</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Isolation Boundaries</span>
+    </div>
+  </div>
+</div>
+
+<!-- M08 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M08</span>
+    <span class="module-name">GitOps</span>
+    <span class="module-dur">4&ndash;5 days</span>
+    <span class="module-badge diff">&#9733; Differentiator</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> GitOps Principles</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Core Model</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> ArgoCD &amp; Flux</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; App Management</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Progressive Delivery</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Safe Rollouts</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> GitOps Beyond Apps</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Cloud Resources</span>
+    </div>
+  </div>
+</div>
+
+<!-- M09 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M09</span>
+    <span class="module-name">Observability</span>
+    <span class="module-dur">5&ndash;6 days</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Three Signals &amp; OpenTelemetry</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; OTel</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> The Stack</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Metrics &amp; Dashboards</span>
+      <span class="lesson-item">L02 &mdash; Logs &amp; Traces</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> SLIs / SLOs / Error Budgets</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Reliability Targets</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> Telemetry Hygiene for AIOps</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Making Telemetry AI-Ready</span>
+    </div>
+  </div>
+</div>
+
+<!-- M10 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M10</span>
+    <span class="module-name">DevSecOps &amp; Supply Chain Security</span>
+    <span class="module-dur">9&ndash;11 days</span>
+    <span class="module-badge diff">&#9733; Differentiator &mdash; go deepest</span>
+    <span class="module-badge cert">CKS</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Shift-Left Scanning</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; The Scan Matrix</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Secrets Management</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Killing Long-Lived Creds</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Classic Supply Chain Security</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; SBOMs</span>
+      <span class="lesson-item">L02 &mdash; Signing &amp; Provenance</span>
+      <span class="lesson-item">L03 &mdash; SLSA Levels</span>
+      <span class="lesson-item">L04 &mdash; Admission Control</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> AI/ML Supply Chain (MLSecOps)</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Model Provenance &amp; Signing</span>
+      <span class="lesson-item">L02 &mdash; Serialization Attacks</span>
+      <span class="lesson-item">L03 &mdash; MCP Servers as Supply Chain Components</span>
+      <span class="lesson-item">L04 &mdash; Attestation Forgery is Real</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U05</span> Kubernetes Hardening (CKS Core)</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Cluster &amp; Component Hardening</span>
+      <span class="lesson-item">L02 &mdash; Sandboxing &amp; Runtime</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U06</span> Zero Trust Posture</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Least Privilege Everywhere</span>
+    </div>
+  </div>
+</div>
+
+<!-- M11 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M11</span>
+    <span class="module-name">Cloud Platform (go deep on one)</span>
+    <span class="module-dur">6&ndash;8 days</span>
+    <span class="module-badge cert">Cloud Assoc/Pro</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Core Services</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Compute, Storage, Network</span>
+      <span class="lesson-item">L02 &mdash; IAM Deeply</span>
+      <span class="lesson-item">L03 &mdash; Managed Services</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Architecture &amp; Governance</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Well-Architected &amp; Org Structure</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Identity for Non-Humans</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Workload &amp; Agent Identity</span>
+    </div>
+  </div>
+</div>
+
+<!-- M12 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M12</span>
+    <span class="module-name">Platform Engineering</span>
+    <span class="module-dur">6&ndash;7 days</span>
+    <span class="module-badge diff">&#9733; Differentiator</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> IDP Concepts</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Platform as a Product</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Backstage &amp; The Portal</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Developer Portal</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Self-Service Provisioning</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Crossplane</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> AI-Native Platforms</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Baked-In Intelligence</span>
+    </div>
+  </div>
+</div>
+
+<!-- M13 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M13</span>
+    <span class="module-name">Site Reliability Engineering (SRE)</span>
+    <span class="module-dur">4&ndash;5 days</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> SLOs as Decision Tools</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Error Budgets</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Incident Response</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Running an Incident</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Chaos Engineering</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Fault Injection</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> Capacity &amp; Performance</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Planning</span>
+    </div>
+  </div>
+</div>
+
+<!-- M14 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M14</span>
+    <span class="module-name">FinOps</span>
+    <span class="module-dur">3&ndash;4 days</span>
+    <span class="module-badge diff">&#9733; Differentiator</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Cost Visibility</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Allocation</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Cost in the Workflow</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Shift-Left Cost</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> Cost-Aware Architecture &amp; AI Spend</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Design Gate &amp; AI Cost</span>
+    </div>
+  </div>
+</div>
+
+<!-- M15 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M15</span>
+    <span class="module-name">AI-Assisted Ops / AIOps</span>
+    <span class="module-dur">5&ndash;6 days</span>
+    <span class="module-badge diff">&#9733; Differentiator</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> AI-Assisted Operations</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Daily Ops Assists</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Predictive Anomaly Detection</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Warning Before Outages</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> AI Copilots for IaC</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Generate &amp; Review</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U04</span> LLM Integration Patterns</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; MCP &amp; RAG</span>
+      <span class="lesson-item">L02 &mdash; MLOps / LLMOps Basics</span>
+    </div>
+  </div>
+</div>
+
+<!-- M16 -->
+<div class="module-card">
+  <div class="module-hdr" onclick="toggleModule(this)">
+    <span class="arrow">&#9654;</span>
+    <span class="module-code">M16</span>
+    <span class="module-name">Agentic Ops &amp; AI Governance</span>
+    <span class="module-dur">6&ndash;8 days</span>
+    <span class="module-badge front">&#9733; Frontier</span>
+    <span class="module-badge cert">AI-Security creds</span>
+  </div>
+  <div class="module-body">
+    <div class="unit-header"><span class="u-code">U01</span> Agentic Architecture</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; The Three Layers</span>
+      <span class="lesson-item">L02 &mdash; ReAct Loop</span>
+      <span class="lesson-item">L03 &mdash; Multi-Agent Coordination</span>
+      <span class="lesson-item">L04 &mdash; Pipeline as Specification</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U02</span> Governance &amp; Security</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Non-Human Identity (NHI)</span>
+      <span class="lesson-item">L02 &mdash; Human-in-the-Loop Gates</span>
+      <span class="lesson-item">L03 &mdash; Circuit Breakers</span>
+      <span class="lesson-item">L04 &mdash; Agent Inputs are Hostile</span>
+      <span class="lesson-item">L05 &mdash; Agent Attestation</span>
+    </div>
+    <div class="unit-header"><span class="u-code">U03</span> The Adoption Ladder</div>
+    <div class="lesson-list">
+      <span class="lesson-item">L01 &mdash; Shadow Mode</span>
+      <span class="lesson-item">L02 &mdash; Bounded Autonomy</span>
+      <span class="lesson-item">L03 &mdash; Expanded Autonomy</span>
+    </div>
+  </div>
+</div>
+
+<!-- ========== CAPSTONES ========== -->
+<h2 style="font-family:'Architects Daughter',cursive;color:var(--chalk-orange);font-size:1.8rem;margin:40px 0 20px;text-align:center;">&#127942; Capstone Projects</h2>
+
+<div class="capstone-card">
+  <div class="c-num">&#9312; End-to-End Secure Delivery Platform</div>
+  <div class="c-body">
+    <span class="c-after">after M10 (covers M03&ndash;M10)</span>
+    App &#8594; GitHub Actions (test/scan/sign, SHA-pinned) &#8594; GitOps via ArgoCD &#8594; K8s with service mesh &#8594; OTel observability &#8594; SLO alerting &#8594; Cosign-enforced admission rejecting unsigned artifacts.
+  </div>
+</div>
+
+<div class="capstone-card" style="border-color:var(--chalk-blue);">
+  <div class="c-num" style="color:var(--chalk-blue);">&#9313; Self-Service IDP</div>
+  <div class="c-body">
+    <span class="c-after">after M12 + M14</span>
+    Backstage golden-path template that provisions a compliant, observable, cost-tagged service in one click, security defaults baked in.
+  </div>
+</div>
+
+<div class="capstone-card" style="border-color:var(--chalk-pink);">
+  <div class="c-num" style="color:var(--chalk-pink);">&#9314; Agentic Incident Responder (Flagship)</div>
+  <div class="c-body">
+    <span class="c-after">after M16</span>
+    RAG-based incident/log analysis in the on-call flow, promoted from shadow mode to bounded autonomy on one reversible action, with NHI, human-approval gate, full audit trail, and a documented prompt-injection red-team.
+  </div>
+</div>
+
+<!-- ========== TEACHING ========== -->
+<div class="teach-box">
+  <p style="color:var(--chalk-yellow);">&#128218; How to Teach (per lesson)</p>
+  <div class="flow">Story &#8594; Real-world Problem &#8594; Theory &#8594; Live Demo &#8594; Common Mistakes &#8594; Interview Questions &#8594; Assignment</div>
+  <p style="font-size:.9rem;color:rgba(255,255,255,.5);">Every lecture ends with: Takeaway &middot; Interview Question &middot; Assignment &middot; Challenge &middot; Mistake &middot; Pro Tip</p>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p>AI Powered DevOps &amp; Platform Engineering </p>
+  <p style="margin-top:6px;"><a href="../README.md">View on GitHub</a></p>
+</div>
+
+</div>
+
+<script>
+function toggleModule(hdr) {
+  hdr.parentElement.classList.toggle('open');
+}
+// Open all modules when printing; restore after
+window.onbeforeprint = function() {
+  document.querySelectorAll('.module-card').forEach(c => c.classList.add('open'));
+};
+window.onafterprint = function() {
+  document.querySelectorAll('.module-card').forEach((c,i) => {
+    if (i !== 0) c.classList.remove('open'); // keep M01 open
+  });
+};
+</script>
+
+</body>
+</html>

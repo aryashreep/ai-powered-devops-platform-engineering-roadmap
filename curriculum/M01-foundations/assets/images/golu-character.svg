@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 500" width="300" height="500">
+  <defs>
+    <linearGradient id="goluBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1dd1a1;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#1dd1a1;stop-opacity:0.05"/>
+    </linearGradient>
+    <linearGradient id="skin" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f5d6c6"/>
+      <stop offset="100%" style="stop-color:#e8c4b0"/>
+    </linearGradient>
+    <linearGradient id="hoodieGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1dd1a1"/>
+      <stop offset="100%" style="stop-color:#10ac84"/>
+    </linearGradient>
+    <linearGradient id="hairGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d3436"/>
+      <stop offset="100%" style="stop-color:#1a1d1e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="150" cy="180" r="130" fill="url(#goluBg)" stroke="#1dd1a1" stroke-width="2" stroke-dasharray="6,4"/>
+
+  <!-- Body / Hoodie -->
+  <path d="M100,330 Q100,420 110,490 L190,490 Q200,420 200,330 Z" fill="url(#hoodieGrad)" stroke="#10ac84" stroke-width="2"/>
+  <!-- Hoodie pocket -->
+  <rect x="115" y="380" width="70" height="12" rx="6" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+  <!-- Hoodie string left -->
+  <path d="M135,280 Q125,300 130,330" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Hoodie string right -->
+  <path d="M165,280 Q175,300 170,330" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Hood/collar -->
+  <path d="M95,270 Q100,280 110,290 L190,290 Q200,280 205,270 Q200,260 190,260 L110,260 Q100,260 95,270 Z" fill="#10ac84" stroke="#0d9b72" stroke-width="1.5"/>
+
+  <!-- Neck -->
+  <rect x="135" y="260" width="30" height="30" fill="url(#skin)" stroke="#d4b4a0" stroke-width="1"/>
+
+  <!-- Head -->
+  <ellipse cx="150" cy="210" rx="60" ry="70" fill="url(#skin)" stroke="#d4b4a0" stroke-width="1.5"/>
+
+  <!-- Hair -->
+  <path d="M90,195 Q90,140 110,125 Q130,110 150,108 Q170,106 190,120 Q210,135 210,190 Q210,170 200,155 Q190,140 170,130 Q155,122 150,122 Q140,122 130,128 Q110,140 100,155 Q92,170 90,195 Z" fill="url(#hairGrad)"/>
+  <!-- Hair top spikes -->
+  <path d="M120,115 Q125,95 135,108" fill="url(#hairGrad)"/>
+  <path d="M140,108 Q148,88 155,106" fill="url(#hairGrad)"/>
+  <path d="M165,108 Q172,92 178,115" fill="url(#hairGrad)"/>
+
+  <!-- Left Eye -->
+  <ellipse cx="130" cy="205" rx="10" ry="12" fill="white" stroke="#2d3436" stroke-width="1.5"/>
+  <ellipse cx="130" cy="205" rx="5" ry="6" fill="#2d3436"/>
+  <ellipse cx="128" cy="203" rx="2" ry="2.5" fill="white"/>
+
+  <!-- Right Eye -->
+  <ellipse cx="170" cy="205" rx="10" ry="12" fill="white" stroke="#2d3436" stroke-width="1.5"/>
+  <ellipse cx="170" cy="205" rx="5" ry="6" fill="#2d3436"/>
+  <ellipse cx="168" cy="203" rx="2" ry="2.5" fill="white"/>
+
+  <!-- Eyebrows -->
+  <path d="M118,190 Q130,185 140,190" fill="none" stroke="#2d3436" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M160,190 Q170,185 182,190" fill="none" stroke="#2d3436" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Nose -->
+  <path d="M150,215 Q145,225 150,228 Q155,225 150,215" fill="#d4b4a0" stroke="#c4a490" stroke-width="1"/>
+
+  <!-- Mouth - excited grin -->
+  <path d="M135,240 Q150,258 165,240" fill="none" stroke="#2d3436" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Teeth hint -->
+  <path d="M140,242 Q150,245 160,242" fill="#f1f2f6" stroke="none"/>
+
+  <!-- Cheeks blush -->
+  <ellipse cx="112" cy="225" rx="10" ry="6" fill="#ff9ff3" opacity="0.2"/>
+  <ellipse cx="188" cy="225" rx="10" ry="6" fill="#ff9ff3" opacity="0.2"/>
+
+  <!-- Ears -->
+  <ellipse cx="90" cy="205" rx="8" ry="12" fill="url(#skin)" stroke="#d4b4a0" stroke-width="1.5"/>
+  <ellipse cx="210" cy="205" rx="8" ry="12" fill="url(#skin)" stroke="#d4b4a0" stroke-width="1.5"/>
+
+  <!-- Headphones -->
+  <path d="M88,195 Q88,160 110,145 Q130,135 150,135 Q170,135 190,145 Q212,160 212,195" fill="none" stroke="#636e72" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="88" cy="195" rx="12" ry="15" fill="#636e72" stroke="#2d3436" stroke-width="1.5"/>
+  <ellipse cx="88" cy="195" rx="6" ry="8" fill="#1dd1a1"/>
+  <ellipse cx="212" cy="195" rx="12" ry="15" fill="#636e72" stroke="#2d3436" stroke-width="1.5"/>
+  <ellipse cx="212" cy="195" rx="6" ry="8" fill="#1dd1a1"/>
+
+  <!-- Name label at bottom -->
+  <rect x="100" y="440" width="100" height="30" rx="15" fill="rgba(29,209,161,0.1)" stroke="#1dd1a1" stroke-width="1.5"/>
+  <text x="150" y="460" font-family="'Architects Daughter','Comic Sans MS',cursive, sans-serif" font-size="18" font-weight="bold" fill="#1dd1a1" text-anchor="middle">Golu</text>
+
+  <!-- Subtitle -->
+  <text x="150" y="485" font-family="'Inter',sans-serif" font-size="11" fill="rgba(255,255,255,0.4)" text-anchor="middle">Junior DevOps</text>
+</svg>

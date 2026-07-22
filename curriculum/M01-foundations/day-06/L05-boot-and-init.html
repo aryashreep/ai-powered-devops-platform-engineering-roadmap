@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>M01 · L01 — Boot &amp; Init | Linux Internals</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg-blackboard: #0a0e14;
+    --chalk-white:  #f1f2f6;
+    --chalk-yellow: #feca57;
+    --chalk-blue:   #48dbfb;
+    --chalk-green:  #1dd1a1;
+    --chalk-pink:   #ff9ff3;
+    --chalk-orange: #ff9f43;
+    --chalk-red:    #ff6b6b;
+    --wood-frame:   #2f3542;
+    --surface:      rgba(255,255,255,0.04);
+  }
+  @media print {
+    body { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; background:var(--bg-blackboard)!important; }
+    .blackboard { border:none!important; box-shadow:none!important; width:100%!important; margin:0!important; padding:10px!important; }
+    section { page-break-inside:avoid; }
+    .tab-nav { display:none!important; }
+    .tab-pane { display:block!important; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg-blackboard); color:var(--chalk-white); font-family:'Inter',sans-serif; padding:20px; }
+  .blackboard { max-width:1000px; margin:0 auto; border:12px solid var(--wood-frame); padding:50px; box-shadow:0 30px 60px rgba(0,0,0,.8); background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px); background-size:30px 30px; }
+
+  /* AUTHOR HEADER */
+  .author-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--chalk-yellow); padding-bottom:20px; margin-bottom:40px; }
+  .author-info h2 { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:1.8rem; }
+  .author-info p  { font-family:'Architects Daughter'; color:var(--chalk-white); font-size:1.1rem; margin-top:5px; }
+  .author-contact { text-align:right; font-family:'Fira Code',monospace; font-size:.82rem; color:var(--chalk-blue); }
+  .author-contact a { color:var(--chalk-blue); text-decoration:none; }
+  .contact-item { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:4px; }
+
+  /* PAGE TITLE */
+  h1 { font-family:'Architects Daughter',cursive; font-size:3.2rem; text-align:center; color:var(--chalk-yellow); text-transform:uppercase; margin-bottom:5px; }
+  .subtitle { text-align:center; color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1.4rem; margin-bottom:16px; }
+  .meta-badges { display:flex; justify-content:center; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
+  .badge { font-family:'Fira Code',monospace; font-size:.78rem; padding:4px 12px; border-radius:20px; border:1px solid; }
+  .badge-mod { border-color:var(--chalk-yellow); color:var(--chalk-yellow); }
+  .badge-time { border-color:var(--chalk-blue); color:var(--chalk-blue); }
+  .badge-status { border-color:var(--chalk-green); color:var(--chalk-green); }
+
+  /* TABS */
+  .tab-nav { display:flex; gap:0; margin-bottom:40px; border:2px solid var(--wood-frame); border-radius:12px; overflow:hidden; }
+  .tab-btn { flex:1; padding:14px 20px; font-family:'Architects Daughter',cursive; font-size:1.1rem; background:transparent; color:var(--chalk-white); border:none; cursor:pointer; border-right:2px solid var(--wood-frame); transition:all .2s; }
+  .tab-btn:last-child { border-right:none; }
+  .tab-btn:hover { background:rgba(255,255,255,.06); }
+  .tab-btn.active { background:rgba(254,202,87,.1); color:var(--chalk-yellow); }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; }
+
+  /* SHARED */
+  h2, h3, .handwritten, .speech-bubble, .topic-title { font-family:'Architects Daughter',cursive; }
+  section { margin-bottom:70px; padding-bottom:40px; border-bottom:2px dashed rgba(255,255,255,.1); }
+  section:last-of-type { border-bottom:none; }
+  .topic-title { color:var(--chalk-pink); font-size:2rem; margin-bottom:28px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+  .content-box { background:var(--surface); padding:25px; border-radius:15px; border:2px solid transparent; margin-bottom:20px; }
+  ul { list-style:none; padding-left:0; }
+  li { margin-bottom:13px; padding-left:28px; position:relative; }
+  li::before { content:'→'; position:absolute; left:0; color:var(--chalk-blue); }
+
+  /* CHARACTERS */
+  .doodle-container { display:flex; align-items:center; gap:28px; margin:28px 0; }
+  .doodle-container.right { justify-content:flex-end; margin-top:14px; }
+  .doodle-wrapper { display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .char-name { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:.9rem; }  .golu { width:60px; height:100px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .golu-img { width:60px; height:100px; object-fit:cover; object-position:center 20%; border-radius:10px; border:2.5px solid var(--chalk-green); box-shadow:0 0 12px rgba(29,209,161,.2); }
+  .jagu { width:70px; height:110px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .jagu-img { width:70px; height:100px; object-fit:cover; object-position:center 15%; border-radius:10px; border:2.5px solid var(--chalk-blue); box-shadow:0 0 12px rgba(72,219,251,.2); }
+
+  .speech-bubble { border:2px solid var(--chalk-white); border-radius:25px; padding:18px 26px; position:relative; max-width:72%; font-family:'Architects Daughter',cursive; font-size:1.2rem; line-height:1.5; }
+  .speech-bubble::before { content:''; position:absolute; left:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-right:14px solid var(--chalk-white); }
+  .speech-bubble.flip::before { display:none; }
+  .speech-bubble.flip::after { content:''; position:absolute; right:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-left:14px solid var(--chalk-white); }
+  .chalk-text { color:var(--chalk-yellow); font-weight:bold; }
+
+  /* INTRO */
+  .intro-banner { border:4px solid var(--chalk-yellow); padding:28px; border-radius:20px; margin-bottom:36px; background:rgba(254,202,87,.05); }
+
+  /* STATS */
+  .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; text-align:center; margin:20px 0; }
+  .stat-val { font-family:'Architects Daughter'; font-size:2.6rem; }
+  .stat-lbl { font-family:'Architects Daughter'; color:var(--chalk-blue); margin-top:4px; font-size:.95rem; }
+
+  /* BOOT DIAGRAM */
+  .diagram-container { border:3px solid var(--chalk-white); border-radius:25px; padding:36px; text-align:center; background:rgba(0,0,0,.5); margin:28px 0; }
+  .boot-chain { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:5px; }
+  .boot-node { font-family:'Architects Daughter'; font-size:.9rem; padding:8px 13px; border-radius:10px; border:2px solid; white-space:nowrap; }
+  .boot-arr { color:var(--chalk-yellow); font-size:1.2rem; }
+
+  /* TOPIC FLOW */
+  .topic-flow { display:flex; flex-direction:column; }
+  .tf-row { display:flex; align-items:flex-start; gap:14px; }
+  .tf-spine { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+  .tf-dot { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:.85rem; font-weight:700; }
+  .tf-line { width:2px; min-height:20px; flex:1; margin:3px 0; background:rgba(255,255,255,.1); }
+  .tf-body { padding:2px 0 18px; flex:1; }
+  .tf-body h4 { font-family:'Architects Daughter'; font-size:1.1rem; margin-bottom:3px; }
+  .tf-body p  { font-size:.86rem; color:rgba(255,255,255,.55); line-height:1.5; }
+
+  /* VS */
+  .vs-row { display:flex; align-items:center; gap:14px; margin:20px 0; }
+  .vs-circle { width:52px; height:52px; border:3px solid var(--chalk-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:1.3rem; color:var(--chalk-orange); flex-shrink:0; }
+
+  /* STEP BADGE */
+  .step-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:20px; padding:4px 14px; font-family:'Fira Code',monospace; font-size:.76rem; color:var(--chalk-blue); margin-bottom:16px; }
+
+  /* MISTAKE */
+  .mistake-pair { margin-bottom:22px; }
+  .m-label { font-family:'Architects Daughter'; font-size:1rem; margin-bottom:7px; color:var(--chalk-orange); }
+  .m-block { border-radius:10px; padding:12px 16px; margin-top:5px; }
+  .m-wrong { background:rgba(255,107,107,.07); border:1px solid rgba(255,107,107,.3); }
+  .m-right { background:rgba(29,209,161,.07); border:1px solid rgba(29,209,161,.3); }
+  .m-block code { font-family:'Fira Code',monospace; font-size:.8rem; color:var(--chalk-white); display:block; white-space:pre; }
+
+  /* CODE */
+  pre { background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:18px 20px; overflow-x:auto; margin:12px 0; position:relative; }
+  pre code { font-family:'Fira Code',monospace; font-size:.8rem; line-height:1.7; color:var(--chalk-white); }
+  .copy-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.13); color:rgba(255,255,255,.45); padding:3px 10px; border-radius:6px; font-family:'Fira Code',monospace; font-size:.7rem; cursor:pointer; transition:all .15s; }
+  .copy-btn:hover { background:rgba(254,202,87,.2); color:var(--chalk-yellow); border-color:var(--chalk-yellow); }
+  .copy-btn.done { background:rgba(29,209,161,.2); color:var(--chalk-green); border-color:var(--chalk-green); }
+  .cm  { color:#546e7a; }
+  .cmd { color:var(--chalk-blue); }
+  .flg { color:var(--chalk-pink); }
+  .str { color:var(--chalk-green); }
+
+  /* INTERVIEW Q */
+  .iq { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .iq-q { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; cursor:pointer; }
+  .iq-q:hover { background:rgba(255,255,255,.03); }
+  .iq-num { width:28px; height:28px; border-radius:50%; background:rgba(72,219,251,.13); color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+  .iq-text { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; line-height:1.4; }
+  .iq-arr { color:rgba(255,255,255,.28); font-size:.9rem; transition:transform .2s; margin-top:4px; }
+  .iq.open .iq-arr { transform:rotate(180deg); }
+  .iq-a { display:none; padding:0 20px 16px 60px; font-size:.88rem; color:rgba(255,255,255,.62); line-height:1.65; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; margin-top:-1px; }
+  .iq.open .iq-a { display:block; }
+
+  /* QUIZ */
+  .quiz-item { margin-bottom:22px; padding-bottom:16px; border-bottom:1px dashed rgba(255,255,255,.06); }
+  .quiz-q { font-family:'Architects Daughter'; font-size:1.15rem; margin-bottom:10px; }
+  .quiz-opts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .quiz-opt { font-family:'Architects Daughter'; color:var(--chalk-blue); font-size:1rem; cursor:pointer; padding:7px 10px; border-radius:8px; border:1px solid rgba(72,219,251,.2); transition:all .15s; }
+  .quiz-opt:hover { background:rgba(72,219,251,.08); }
+  .quiz-opt.correct { background:rgba(29,209,161,.14); border-color:var(--chalk-green); color:var(--chalk-green); pointer-events:none; }
+  .quiz-opt.wrong   { background:rgba(255,107,107,.1); border-color:var(--chalk-red); color:var(--chalk-red); pointer-events:none; }
+  .answer-key { border:2px dashed var(--chalk-green); padding:18px 22px; border-radius:14px; margin-top:28px; background:rgba(29,209,161,.05); }
+
+  /* CLOSING CARDS */
+  .closing-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+  .cc { background:var(--surface); border:2px solid; border-radius:16px; padding:18px 20px; }
+  .cc .icon { font-size:1.5rem; margin-bottom:7px; }
+  .cc .title { font-family:'Architects Daughter'; font-size:1.05rem; margin-bottom:6px; }
+  .cc .body  { font-size:.86rem; color:rgba(255,255,255,.68); line-height:1.6; }
+  .cc.takeaway  { border-color:var(--chalk-yellow); }
+  .cc.interview { border-color:var(--chalk-blue); }
+  .cc.assign    { border-color:var(--chalk-green); }
+  .cc.challenge { border-color:var(--chalk-orange); }
+  .cc.mistake   { border-color:var(--chalk-red); }
+  .cc.protip    { border-color:var(--chalk-pink); }
+
+  /* CHEAT TABLE */
+  .cmd-table { width:100%; border-collapse:collapse; margin:14px 0; }
+  .cmd-table th { color:var(--chalk-yellow); border-bottom:2px solid var(--chalk-yellow); text-align:left; padding:10px 12px; font-family:'Architects Daughter'; font-size:1rem; }
+  .cmd-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.07); font-size:.81rem; vertical-align:top; }
+  .cmd-table td:first-child { font-family:'Fira Code',monospace; color:var(--chalk-blue); white-space:nowrap; }
+  .cmd-table td:last-child  { color:rgba(255,255,255,.58); }
+  .cs-title { font-family:'Architects Daughter'; color:var(--chalk-pink); font-size:1.5rem; margin:32px 0 8px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+
+  /* LAB */
+  .lab-step { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:20px 22px; margin-bottom:13px; }
+  .lab-hdr { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .lab-num { width:30px; height:30px; border-radius:50%; background:rgba(254,202,87,.13); color:var(--chalk-yellow); font-family:'Architects Daughter'; font-size:1.1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .lab-title { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; }
+  .lab-chk { width:18px; height:18px; accent-color:var(--chalk-green); cursor:pointer; }
+  .accept { background:rgba(29,209,161,.05); border:1px solid rgba(29,209,161,.28); border-radius:9px; padding:10px 14px; margin-top:9px; font-size:.83rem; color:var(--chalk-green); }
+  .lab-prog-wrap { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:16px 20px; display:flex; align-items:center; gap:14px; margin-top:10px; }
+  .lab-bar { flex:1; height:6px; background:rgba(255,255,255,.09); border-radius:3px; }
+  .lab-fill { height:100%; background:linear-gradient(90deg,var(--chalk-green),var(--chalk-blue)); border-radius:3px; width:0; transition:width .3s; }
+
+  /* FOOTER */
+  .footer { text-align:center; color:#555; margin-top:60px; font-family:'Architects Daughter'; border-top:1px solid rgba(255,255,255,.09); padding-top:20px; }
+  .footer a { color:var(--chalk-blue); text-decoration:none; font-family:'Fira Code'; font-size:.85rem; }
+
+  
+  /* LESSON NAVIGATION */
+  .lesson-nav { margin-top:40px; padding-top:20px; border-top:2px solid rgba(255,255,255,.09); }
+  .nav-inner { display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap; }
+  .nav-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:10px; font-family:'Architects Daughter',cursive; font-size:.92rem; text-decoration:none; transition:all .15s; border:1px solid rgba(255,255,255,.12); color:var(--chalk-white); background:var(--surface); white-space:nowrap; }
+  .nav-btn:hover { border-color:var(--chalk-yellow); color:var(--chalk-yellow); background:rgba(254,202,87,.06); transform:translateY(-1px); }
+  .nav-btn.up { border-color:rgba(72,219,251,.2); color:var(--chalk-blue); }
+  .nav-btn.up:hover { border-color:var(--chalk-blue); background:rgba(72,219,251,.06); }
+  .nav-btn.prev { border-color:rgba(255,255,255,.1); }
+  .nav-btn.next { border-color:rgba(255,255,255,.1); }
+  .nav-btn.disabled { opacity:.3; pointer-events:none; border-color:transparent; background:transparent; }
+  @media(max-width:680px) {
+    .nav-inner { flex-direction:column; align-items:stretch; }
+    .nav-btn { justify-content:center; }
+  }
+
+  /* BACK TO TOP floating button */
+  .to-top { position:fixed; bottom:30px; right:30px; width:48px; height:48px; border-radius:50%; background:var(--chalk-yellow); color:#0a0e14; border:none; cursor:pointer; font-size:1.3rem; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:all .25s ease; z-index:1000; box-shadow:0 4px 16px rgba(254,202,87,.25); }
+  .to-top.visible { opacity:1; visibility:visible; }
+  .to-top:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(254,202,87,.35); }
+  @media(max-width:680px) {
+    .to-top { bottom:16px; right:16px; width:42px; height:42px; font-size:1.1rem; }
+  }
+
+
+@media(max-width:680px) {
+    .blackboard { padding:22px 16px; }
+    h1 { font-size:2.1rem; }
+    .closing-grid,.stat-row { grid-template-columns:1fr; }
+    .author-header { flex-direction:column; gap:14px; }
+    .author-contact { text-align:left; }
+    .vs-row { flex-direction:column; }
+    .boot-chain { flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="blackboard">
+
+<!-- AUTHOR HEADER -->
+<header class="author-header">
+  <div class="author-info">
+    <h2>Aryashree Pritikrishna</h2>
+    <p>AI Powered DevOps &amp; Platform Engineering</p>
+  </div>
+  <div class="author-contact">
+    
+    <div class="contact-item">💼 <a href="https://www.linkedin.com/in/aryashreepritikrishna/">linkedin.com/in/aryashreepritikrishna</a></div>
+    <div class="contact-item">📺 <a href="https://www.youtube.com/@aryashreepritikrishna">youtube.com/@aryashreepritikrishna</a></div>
+    <div class="contact-item">📧 <a href="mailto:aryashreep@gmail.com">aryashreep@gmail.com</a></div>
+  </div>
+</header>
+
+<!-- PAGE TITLE -->
+<header>
+  <h1>Boot &amp; Init</h1>
+  <p class="subtitle">M01 · U01 · L01 — Linux Internals 🐧</p>
+  <div class="meta-badges">
+    <span class="badge badge-mod">M01 · Linux Foundations</span>
+    <span class="badge badge-time">⏱ 45 min</span>
+    <span class="badge badge-status">● Draft</span>
+  </div>
+</header>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('lesson',this)">📖 Lesson</button>
+  <button class="tab-btn" onclick="switchTab('cheatsheet',this)">📋 Cheat Sheet</button>
+  <button class="tab-btn" onclick="switchTab('lab',this)">🧪 Lab</button>
+</div>
+
+<!-- ══════════════ TAB 1 — LESSON ══════════════ -->
+<div class="tab-pane active" id="tab-lesson">
+
+<!-- INTRO DIALOGUE -->
+<section>
+  <div class="intro-banner">
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"Jagu bhai, 3 AM ko server crash hua, reboot ke baad service nahi aayi! <span class="chalk-text">Kya karu?</span>"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"Golu, pehle ye samjho — reboot ke baad <span class="chalk-text">kya kya hota hai?</span> Jo jaanta hai, woh 30 second mein fix karta hai!"</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="content-box" style="margin-top:20px;border-left:4px solid var(--chalk-yellow);">
+      <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:9px;">Aaj kya seekhenge?</h3>
+      <p class="handwritten" style="font-size:1.1rem;">Linux boot ka <b>poora safar</b> — BIOS se systemd tak. Samjhenge PID 1 ka role, systemctl se services manage karna, aur journalctl se koi bhi crash solve karna.</p>
+    </div>
+  </div>
+</section>
+
+<!-- LEARNING OBJECTIVES -->
+<section>
+  <div class="topic-title">🎯 Learning Objectives</div>
+  <div class="content-box" style="border-left:5px solid var(--chalk-green);">
+    <ul>
+      <li><strong>Understand:</strong> Linux boot sequence — BIOS/UEFI → GRUB2 → Kernel → systemd.</li>
+      <li><strong>Master:</strong> systemctl se services start, stop, enable, disable karna.</li>
+      <li><strong>Debug:</strong> journalctl se boot failures aur service crashes trace karna.</li>
+    </ul>
+    <p class="handwritten" style="color:var(--chalk-red);margin-top:14px;font-size:1.1rem;">
+      💡 <span class="chalk-text">Kyu Seekhein?</span> Kyunki production mein 3 AM ka outage tab hi 30 second mein solve hota hai jab boot sequence crystal clear ho!
+    </p>
+  </div>
+</section>
+
+<!-- ① STORY -->
+<section>
+  <div class="step-badge">① Story · 2 min</div>
+  <div class="topic-title">📖 The 3 AM Outage</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);">
+    <p class="handwritten" style="font-size:1.2rem;line-height:1.75;">
+      Raat ke <span class="chalk-text">3:14 AM</span>. Phone baja. Production database server ne kernel update ke baad reboot liya.
+      Service automatically start honi chahiye thi — nahi hui. SLO breach ka timer chal raha tha.
+    </p>
+    <p style="font-size:.93rem;color:rgba(255,255,255,.7);margin-top:14px;line-height:1.7;">
+      Senior engineer ne calmly type kiya <code style="font-family:'Fira Code';color:var(--chalk-blue)">journalctl -b -u postgres</code> —
+      30 second mein root cause: unit file mein missing <code style="font-family:'Fira Code';color:var(--chalk-blue)">After=</code> directive.
+      Junior wala 2 ghante guess karta raha.
+    </p>
+    <p style="font-size:.9rem;color:var(--chalk-green);margin-top:12px;font-style:italic;">
+      Ye lesson tumhe us 30-second engineer ki jagah le jaayega. 🎯
+    </p>
+  </div>
+</section>
+
+<!-- ② REAL-WORLD PROBLEM -->
+<section>
+  <div class="step-badge">② Real-world Problem · 3 min</div>
+  <div class="topic-title">❗ Kya Toot-ta Hai Iske Bina?</div>
+
+  <!-- Topic Flow -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:16px;">Topic Flow — Is Lesson Ka Rasta</h3>
+    <div class="topic-flow">
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,107,107,.14);color:var(--chalk-red)">P</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-red)">Problem</h4><p>Server reboot ke baad service nahi aayi — kyu?</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">S</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-yellow)">Story</h4><p>3 AM outage — journalctl se 30 second mein fix.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">V</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Visualization</h4><p>BIOS → GRUB2 → Kernel → initramfs → systemd → Services.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,243,.14);color:var(--chalk-pink)">T</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-pink)">Theory</h4><p>Boot stages, systemd units &amp; targets, journalctl.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(29,209,161,.14);color:var(--chalk-green)">H</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-green)">Hands-on</h4><p>Live demo — systemctl + journalctl on your VM.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,67,.14);color:var(--chalk-orange)">B</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-orange)">Best Practice</h4><p>enable --now, daemon-reload, Restart=on-failure.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">I</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Interview</h4><p>PID 1 kya hai? enable vs start ka fark?</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">A</div></div><div class="tf-body" style="padding-bottom:0"><h4 style="color:var(--chalk-yellow)">Assignment</h4><p>Custom systemd service likho, deploy karo, test karo.</p></div></div>
+    </div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-red);">
+    <h3 class="handwritten" style="color:var(--chalk-red);margin-bottom:13px;">Bina boot knowledge ke kya hoga?</h3>
+    <ul>
+      <li>Service crash ke baad <strong>kyu nahi aayi</strong> — idea nahi hoga</li>
+      <li><strong>enabled vs running</strong> ka fark nahi pata — ek bomb jo reboot pe phatega</li>
+      <li>Logs milenge nahi kyunki <strong>syslog se pehle</strong> kuch crash hua</li>
+      <li>Boot <strong>3 minute slow</strong> kyu hai — blind provisioning</li>
+      <li>Container kaise start hota hai — <strong>same init concepts</strong> andar hain</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ③ THEORY -->
+<section>
+  <div class="step-badge">③ Theory · 5 min</div>
+  <div class="topic-title">📌 Teen Pillars: BIOS, systemd, journalctl</div>
+
+  <!-- Did You Know -->
+  <div class="stat-row">
+    <div><div class="stat-val" style="color:var(--chalk-yellow)">PID 1</div><div class="stat-lbl">systemd is always first</div></div>
+    <div><div class="stat-val" style="color:var(--chalk-pink)">8 Steps</div><div class="stat-lbl">Power ON → Your App</div></div>
+    <div><div class="stat-val" style="color:var(--chalk-green)">1991</div><div class="stat-lbl">Linux kernel born</div></div>
+  </div>
+
+  <!-- ANALOGY -->
+  <div class="content-box" style="border:2px dashed var(--chalk-white);margin-top:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:11px;">💡 Analogy: Hospital System</h3>
+    <p class="handwritten" style="font-size:1.15rem;line-height:1.75;">
+      1. <span class="chalk-text">BIOS/UEFI:</span> Security guard — entry gate pe ID check karta hai.<br/>
+      2. <span class="chalk-text">GRUB2:</span> Receptionist — "Kaun sa doctor? Which kernel?"<br/>
+      3. <span class="chalk-text">Kernel:</span> Brain surgeon — hardware se directly baat karta hai.<br/>
+      4. <span class="chalk-text">systemd (PID 1):</span> Hospital Admin — sab doctors (services) ko manage karta hai.
+    </p>
+  </div>
+
+  <!-- Boot diagram -->
+  <div class="diagram-container">
+    <p class="handwritten" style="color:var(--chalk-pink);font-size:1.25rem;margin-bottom:18px;">Linux Boot Sequence</p>
+    <div class="boot-chain">
+      <span class="boot-node" style="border-color:var(--chalk-yellow);color:var(--chalk-yellow)">🔌 Power ON</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-orange);color:var(--chalk-orange)">⚙️ BIOS/UEFI</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-blue);color:var(--chalk-blue)">📀 GRUB2</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-pink);color:var(--chalk-pink)">🐧 Kernel</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-white)">📦 initramfs</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-white)">🏠 Real Root</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-green);color:var(--chalk-green)">🚀 systemd PID 1</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-yellow);color:var(--chalk-yellow)">✅ Your Services</span>
+    </div>
+    <p class="handwritten" style="margin-top:20px;font-size:1.05rem;">Jab tak ye chain na samjho, <span class="chalk-text">boot failure diagnose nahi hogi!</span></p>
+  </div>
+
+  <!-- BIOS vs UEFI -->
+  <div class="vs-row">
+    <div class="content-box" style="flex:1;border-color:var(--chalk-blue);">
+      <h3 class="handwritten" style="color:var(--chalk-blue);">BIOS (Legacy)</h3>
+      <ul>
+        <li>MBR — first 512 bytes of disk</li>
+        <li>Max 2 TB disk support</li>
+        <li>16-bit real mode</li>
+        <li style="color:var(--chalk-red)">No Secure Boot ✗</li>
+      </ul>
+    </div>
+    <div class="vs-circle">VS</div>
+    <div class="content-box" style="flex:1;border-color:var(--chalk-green);">
+      <h3 class="handwritten" style="color:var(--chalk-green);">UEFI (Modern)</h3>
+      <ul>
+        <li>ESP partition (FAT32)</li>
+        <li>GPT — 9.4 ZB support</li>
+        <li>64-bit protected mode</li>
+        <li style="color:var(--chalk-green)">Secure Boot support ✓</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- systemd -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);margin-top:18px;">
+    <h3 class="handwritten" style="color:var(--chalk-blue);margin-bottom:12px;">systemd — PID 1 Ka Raaj</h3>
+    <p style="font-size:.91rem;color:rgba(255,255,255,.72);margin-bottom:14px;">systemd is <strong>always PID 1</strong>. Har doosra process iska child. Ye <em>units</em> manage karta hai — .service, .target, .timer, .socket.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:13px;text-align:center;"><div style="font-family:'Architects Daughter';font-size:1.25rem;color:var(--chalk-blue)">.service</div><div style="font-size:.78rem;color:rgba(255,255,255,.48);margin-top:4px">Long-running process</div></div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:13px;text-align:center;"><div style="font-family:'Architects Daughter';font-size:1.25rem;color:var(--chalk-blue)">.target</div><div style="font-size:.78rem;color:rgba(255,255,255,.48);margin-top:4px">Group (= runlevel)</div></div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:13px;text-align:center;"><div style="font-family:'Architects Daughter';font-size:1.25rem;color:var(--chalk-blue)">.timer</div><div style="font-size:.78rem;color:rgba(255,255,255,.48);margin-top:4px">Cron replacement</div></div>
+    </div>
+    <pre><code><span class="cm"># /etc/systemd/system/myapp.service</span>
+[Unit]
+Description=My App
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/myapp
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- journalctl -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);margin-top:15px;">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:11px;">journalctl — Log Superpower</h3>
+    <p style="font-size:.9rem;color:rgba(255,255,255,.68);margin-bottom:12px;">Har service ka output binary journal mein. Syslog se pehle ke logs bhi. Reboots survive karta hai. <strong style="color:var(--chalk-white)">Ye seekhna compulsory hai.</strong></p>
+    <table class="cmd-table">
+      <tr><td>journalctl -b</td><td>Current boot ke logs</td></tr>
+      <tr><td>journalctl -b -1</td><td>PREVIOUS boot — crash analysis ke liye ←</td></tr>
+      <tr><td>journalctl -b -u nginx</td><td>Is boot mein ek specific service</td></tr>
+      <tr><td>journalctl -p err</td><td>Errors aur above only</td></tr>
+      <tr><td>journalctl -f -u nginx</td><td>Live tail — tail -f ka bada bhai</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ④ LIVE DEMO -->
+<section>
+  <div class="step-badge">④ Live Demo · 15 min</div>
+  <div class="topic-title">▶ Screen Pe Dekho, VM Pe Karo</div>
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+      <span class="char-name">Jagu</span>
+    </div>
+    <div class="speech-bubble" style="border-color:var(--chalk-blue)">"Golu, screen share karo! Har command apne VM pe run karo. <span class="chalk-text">Copy paste karo aur observe karo kya output aata hai.</span>"</div>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-yellow);">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:12px;">Step 1 — Boot Time Analyse Karo</h3>
+    <pre><code><span class="cm"># Total boot time</span>
+<span class="cmd">systemd-analyze</span>
+
+<span class="cm"># Konsi service ne sabse zyada time liya? (sorted)</span>
+<span class="cmd">systemd-analyze blame</span>
+
+<span class="cm"># Critical chain — boot time determine karne wala path</span>
+<span class="cmd">systemd-analyze critical-chain</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-blue);">
+    <h3 class="handwritten" style="color:var(--chalk-blue);margin-bottom:12px;">Step 2 — systemctl Commands</h3>
+    <pre><code><span class="cm"># Failed services list</span>
+<span class="cmd">systemctl list-units</span> <span class="flg">--state=failed</span>
+
+<span class="cm"># Service inspect karo</span>
+<span class="cmd">systemctl status</span> sshd
+
+<span class="cm"># Start / Stop / Restart</span>
+<span class="cmd">systemctl start</span>   nginx
+<span class="cmd">systemctl stop</span>    nginx
+<span class="cmd">systemctl restart</span> nginx
+
+<span class="cm"># BEST PRACTICE: enable + start ek saath!</span>
+<span class="cmd">systemctl enable --now</span>  nginx
+<span class="cmd">systemctl disable --now</span> nginx
+
+<span class="cm"># Unit file edit ke baad ZAROOR yeh karo</span>
+<span class="cmd">systemctl daemon-reload</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:12px;">Step 3 — journalctl Debug Karo</h3>
+    <pre><code><span class="cm"># Current boot ke logs</span>
+<span class="cmd">journalctl -b</span>
+
+<span class="cm"># PICHLE boot ke logs (crash ke baad analysis)</span>
+<span class="cmd">journalctl -b -1</span>
+
+<span class="cm"># Ek service ke logs</span>
+<span class="cmd">journalctl -b -u</span> nginx
+
+<span class="cm"># Sirf errors</span>
+<span class="cmd">journalctl -p err -b</span>
+
+<span class="cm"># Live follow</span>
+<span class="cmd">journalctl -f -u</span> nginx</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-pink);">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:12px;">Step 4 — Apna Service Banao</h3>
+    <pre><code><span class="cm"># 1. Script banao</span>
+<span class="cmd">cat</span> > /usr/local/bin/hello.sh <span class="str">&lt;&lt;'EOF'
+#!/bin/bash
+while true; do echo "$(date): hello"; sleep 5; done
+EOF</span>
+<span class="cmd">chmod</span> +x /usr/local/bin/hello.sh
+
+<span class="cm"># 2. Unit file banao</span>
+<span class="cmd">cat</span> > /etc/systemd/system/hello.service <span class="str">&lt;&lt;'EOF'
+[Unit]
+Description=Hello World Service
+After=network.target
+[Service]
+ExecStart=/usr/local/bin/hello.sh
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF</span>
+
+<span class="cm"># 3. Deploy karo</span>
+<span class="cmd">systemctl daemon-reload</span>
+<span class="cmd">systemctl enable --now</span> hello.service
+
+<span class="cm"># 4. Verify karo</span>
+<span class="cmd">systemctl status</span> hello.service
+<span class="cmd">journalctl -f -u</span> hello.service</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+</section>
+
+<!-- ⑤ COMMON MISTAKES -->
+<section>
+  <div class="step-badge">⑤ Common Mistakes · 5 min</div>
+  <div class="topic-title">⚠ Ye Galtiyan Mat Karna!</div>
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"Main yahi karta tha Jagu — <span class="chalk-text">daemon-reload bhool jaata tha!</span>"</div>
+  </div>
+
+  <div class="content-box" style="border-left:5px solid var(--chalk-orange);">
+    <div class="mistake-pair">
+      <div class="m-label">① daemon-reload bhoolna</div>
+      <div class="m-block m-wrong"><code>vi /etc/systemd/system/myapp.service
+systemctl restart myapp    # OLD unit se restart!</code></div>
+      <div class="m-block m-right"><code>vi /etc/systemd/system/myapp.service
+systemctl daemon-reload    # ← zaroori!
+systemctl restart myapp</code></div>
+    </div>
+    <div class="mistake-pair">
+      <div class="m-label">② enable karna par start bhoolna</div>
+      <div class="m-block m-wrong"><code>systemctl enable nginx     # Sirf NEXT REBOOT pe start hoga
+# Abhi service DEAD hai — koi nahi jaanta!</code></div>
+      <div class="m-block m-right"><code>systemctl enable --now nginx   # Enable + Start ek saath ✓</code></div>
+    </div>
+    <div class="mistake-pair">
+      <div class="m-label">③ /var/log/syslog mein dhundhna</div>
+      <div class="m-block m-wrong"><code>tail -f /var/log/syslog    # Pre-syslog messages miss, prev boot miss</code></div>
+      <div class="m-block m-right"><code>journalctl -b -u myapp      # Full journal, is boot
+journalctl -b -1 -u myapp  # Previous (crashed) boot</code></div>
+    </div>
+    <div class="mistake-pair">
+      <div class="m-label">④ restart vs reload confusion</div>
+      <div class="m-block m-wrong"><code>systemctl restart nginx    # Sab connections kill → downtime!</code></div>
+      <div class="m-block m-right"><code>systemctl reload nginx     # SIGHUP → config re-read → zero downtime ✓</code></div>
+    </div>
+    <div class="mistake-pair" style="margin-bottom:0">
+      <div class="m-label">⑤ Restart= directive nahi likhna</div>
+      <div class="m-block m-wrong"><code>[Service]
+ExecStart=/usr/bin/myapp   # crash → forever dead</code></div>
+      <div class="m-block m-right"><code>[Service]
+ExecStart=/usr/bin/myapp
+Restart=on-failure
+RestartSec=5s              # Self-healing ✓</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- ⑥ INTERVIEW QUESTIONS -->
+<section>
+  <div class="step-badge">⑥ Interview Questions · 5 min</div>
+  <div class="topic-title">❓ Interview Mein Yeh Poochenge</div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">1</div><div class="iq-text">PID 1 kya hai aur kyun matter karta hai?</div><div class="iq-arr">▾</div></div>
+    <div class="iq-a">PID 1 = systemd — kernel ke baad sab se pehle start hone wala process. Sab doosre processes iske children hain. Agar PID 1 crash ho — kernel panic. Containers mein bhi PID 1 = entrypoint — exit kare toh container band.</div>
+  </div>
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">2</div><div class="iq-text"><code style="font-family:'Fira Code';font-size:.88rem">systemctl enable</code> aur <code style="font-family:'Fira Code';font-size:.88rem">systemctl start</code> mein kya fark hai?</div><div class="iq-arr">▾</div></div>
+    <div class="iq-a"><strong>start</strong> — service abhi start karo, reboot pe survive nahi karega.<br><br><strong>enable</strong> — symlink create karo next boot ke liye, par abhi start nahi hoga.<br><br>Best: <code style="font-family:'Fira Code'">systemctl enable --now</code> — dono ek saath. Common bug: enable bina start → next reboot pe fail, koi nahi jaanta.</div>
+  </div>
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">3</div><div class="iq-text">Service reboot ke baad start nahi hui. Kaise debug karoge?</div><div class="iq-arr">▾</div></div>
+    <div class="iq-a">
+      1. <code style="font-family:'Fira Code'">systemctl status &lt;svc&gt;</code> — quick overview + exit code<br>
+      2. <code style="font-family:'Fira Code'">journalctl -b -u &lt;svc&gt;</code> — is boot ke poore logs<br>
+      3. <code style="font-family:'Fira Code'">journalctl -b -1 -u &lt;svc&gt;</code> — pichle boot ke logs<br>
+      4. <code style="font-family:'Fira Code'">systemd-analyze verify /etc/systemd/system/&lt;svc&gt;.service</code> — syntax check<br>
+      5. ExecStart path exist karta hai? Executable permissions hain?
+    </div>
+  </div>
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">4</div><div class="iq-text">initramfs kya hai aur kyun chahiye?</div><div class="iq-arr">▾</div></div>
+    <div class="iq-a">Kernel ko disk read karne ke liye drivers chahiye, par drivers disk pe hain — chicken-and-egg. initramfs ek tiny compressed root filesystem hai jo bootloader memory mein load karta hai. Isme drivers hote hain jo real root mount karne ke liye kaafi hain. Disk encryption, LVM, RAID — sab yahan handle hote hain.</div>
+  </div>
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">5</div><div class="iq-text">BIOS vs UEFI — DevOps engineer ko kyun matter karta hai?</div><div class="iq-arr">▾</div></div>
+    <div class="iq-a">UEFI + Secure Boot = supply chain security. Unsigned bootloaders load nahi ho sakte — Kubernetes node hardening (CKS) ke liye relevant. Cloud VM images build karte waqt GRUB config UEFI vs BIOS pe alag hogi — yeh jaanna boot failures bachata hai.</div>
+  </div>
+</section>
+
+<!-- ⑦ ASSIGNMENT -->
+<section>
+  <div class="step-badge">⑦ Assignment · 10 min</div>
+  <div class="topic-title">📝 Ab Tum Karo!</div>
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"Jagu, main try karta hoon! <span class="chalk-text">Step by step batao.</span>"</div>
+  </div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:14px;">Task: Self-Healing Service Deploy Karo</h3>
+    <ul>
+      <li><strong>Task 1:</strong> <code style="font-family:'Fira Code';font-size:.8rem">systemd-analyze blame</code> run karo — top 3 slow services note karo</li>
+      <li><strong>Task 2:</strong> <code style="font-family:'Fira Code';font-size:.8rem">hello.service</code> unit file likho — auto-restart + boot pe start hone wala</li>
+      <li><strong>Task 3:</strong> Deliberately ExecStart path galat karo → journalctl se diagnose karo → fix karo</li>
+      <li><strong>Task 4:</strong> VM reboot karo → verify karo service alive hai bina kisi manual intervention ke</li>
+    </ul>
+    <div class="accept" style="margin-top:16px;">✅ <strong>Done kab maano:</strong> <code style="font-family:'Fira Code';font-size:.78rem">systemctl is-active hello.service</code> returns <code>active</code> after fresh reboot, aur <code style="font-family:'Fira Code';font-size:.78rem">journalctl -b -u hello.service</code> current boot logs dikhaye.</div>
+  </div>
+</section>
+
+<!-- CLOSING CARDS -->
+<section>
+  <div style="height:1px;background:rgba(255,255,255,.1);margin-bottom:26px;"></div>
+  <div class="topic-title">🏁 Aaj Ka Summary</div>
+  <div class="closing-grid">
+    <div class="cc takeaway"><div class="icon">💡</div><div class="title">Today's Takeaway</div><div class="body">PID 1 = systemd. Har service = unit. journalctl = tumhara debugger. Ye teen cheezein 90% boot failures explain karti hain.</div></div>
+    <div class="cc interview"><div class="icon">🎯</div><div class="title">Today's Interview Question</div><div class="body">"Service enabled hai par reboot ke baad nahi aayi — kyu?" → <em>journalctl -b -1 -u &lt;svc&gt;</em></div></div>
+    <div class="cc assign"><div class="icon">📋</div><div class="title">Today's Assignment</div><div class="body">hello.service likho, <code style="font-family:'Fira Code';font-size:.8rem">enable --now</code> se deploy karo, break karo, journalctl se fix karo.</div></div>
+    <div class="cc challenge"><div class="icon">🚀</div><div class="title">Today's Challenge</div><div class="body">Ek <strong>.timer</strong> unit banao jo har 60 second pe health-check run kare aur failures ko specific SyslogIdentifier se log kare.</div></div>
+    <div class="cc mistake"><div class="icon">⚠️</div><div class="title">Today's Mistake</div><div class="body"><code style="font-family:'Fira Code';font-size:.8rem">systemctl enable nginx</code> bina <code style="font-family:'Fira Code';font-size:.8rem">--now</code> ke — service ABHI nahi chal rahi. Sirf next reboot pe chalegi.</div></div>
+    <div class="cc protip"><div class="icon">🔧</div><div class="title">Today's Pro Tip</div><div class="body">Unit file mein <code style="font-family:'Fira Code';font-size:.8rem">SyslogIdentifier=myapp</code> add karo. Phir <code style="font-family:'Fira Code';font-size:.8rem">journalctl -f -t myapp</code> — sirf tumhara app, baaki sab ka noise nahi.</div></div>
+  </div>
+</section>
+
+<!-- MINI QUIZ -->
+<section>
+  <div class="topic-title">❓ Mini Quiz — Test Karo Khud Ko</div>
+  <div class="content-box" style="border:2px dashed var(--chalk-blue);">
+    <div class="quiz-item">
+      <div class="quiz-q">1. Linux mein PID 1 kaun hota hai?</div>
+      <div class="quiz-opts">
+        <span class="quiz-opt" onclick="answer(this,false)">a) bash</span>
+        <span class="quiz-opt" onclick="answer(this,true)">b) systemd</span>
+        <span class="quiz-opt" onclick="answer(this,false)">c) kernel</span>
+        <span class="quiz-opt" onclick="answer(this,false)">d) init.d</span>
+      </div>
+    </div>
+    <div class="quiz-item">
+      <div class="quiz-q">2. Unit file edit ke baad kya karna zaroori hai?</div>
+      <div class="quiz-opts">
+        <span class="quiz-opt" onclick="answer(this,false)">a) reboot</span>
+        <span class="quiz-opt" onclick="answer(this,false)">b) systemctl restart</span>
+        <span class="quiz-opt" onclick="answer(this,true)">c) daemon-reload</span>
+        <span class="quiz-opt" onclick="answer(this,false)">d) kill -9</span>
+      </div>
+    </div>
+    <div class="quiz-item">
+      <div class="quiz-q">3. Previous crashed boot ke logs kaise dekhoge?</div>
+      <div class="quiz-opts">
+        <span class="quiz-opt" onclick="answer(this,false)">a) journalctl -f</span>
+        <span class="quiz-opt" onclick="answer(this,true)">b) journalctl -b -1</span>
+        <span class="quiz-opt" onclick="answer(this,false)">c) tail /var/log/syslog</span>
+        <span class="quiz-opt" onclick="answer(this,false)">d) dmesg -b</span>
+      </div>
+    </div>
+    <div class="quiz-item" style="border:none;margin-bottom:0;padding-bottom:0">
+      <div class="quiz-q">4. Zero-downtime nginx config reload ke liye?</div>
+      <div class="quiz-opts">
+        <span class="quiz-opt" onclick="answer(this,false)">a) systemctl restart</span>
+        <span class="quiz-opt" onclick="answer(this,true)">b) systemctl reload</span>
+        <span class="quiz-opt" onclick="answer(this,false)">c) kill -9</span>
+        <span class="quiz-opt" onclick="answer(this,false)">d) daemon-reload</span>
+      </div>
+    </div>
+    <div class="answer-key">
+      <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:8px;">✅ Answer Key</h3>
+      <p class="handwritten">"Golu, check karo: 1-b | 2-c | 3-b | 4-b"</p>
+    </div>
+  </div>
+</section>
+
+</div><!-- /tab-lesson -->
+
+<!-- ══════════════ TAB 2 — CHEAT SHEET ══════════════ -->
+<div class="tab-pane" id="tab-cheatsheet">
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+      <span class="char-name">Jagu</span>
+    </div>
+    <div class="speech-bubble" style="border-color:var(--chalk-blue)">"Golu, print karke laptop ke paas chipka lo! <span class="chalk-text">Ye sab commands 80% kaam cover karti hain.</span>"</div>
+  </div>
+
+  <div class="cs-title">systemctl — Service Control</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Kya karta hai</th></tr></thead>
+    <tbody>
+      <tr><td>systemctl start &lt;svc&gt;</td><td>Abhi start karo</td></tr>
+      <tr><td>systemctl stop &lt;svc&gt;</td><td>Abhi stop karo</td></tr>
+      <tr><td>systemctl restart &lt;svc&gt;</td><td>Restart — connections kill hote hain</td></tr>
+      <tr><td>systemctl reload &lt;svc&gt;</td><td>Config reload — zero downtime</td></tr>
+      <tr><td>systemctl enable --now &lt;svc&gt;</td><td>Enable + start ek saath ← best practice</td></tr>
+      <tr><td>systemctl disable --now &lt;svc&gt;</td><td>Disable + stop ek saath</td></tr>
+      <tr><td>systemctl daemon-reload</td><td>Unit file edit ke baad ZAROORI</td></tr>
+      <tr><td>systemctl status &lt;svc&gt;</td><td>State + last log lines</td></tr>
+      <tr><td>systemctl is-active &lt;svc&gt;</td><td>"active" ya "inactive"</td></tr>
+      <tr><td>systemctl list-units --state=failed</td><td>Sab failed units</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">journalctl — Log Queries</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Kya karta hai</th></tr></thead>
+    <tbody>
+      <tr><td>journalctl -b</td><td>Current boot ke logs</td></tr>
+      <tr><td>journalctl -b -1</td><td>Previous boot — crash analysis ←</td></tr>
+      <tr><td>journalctl -u &lt;svc&gt;</td><td>Ek unit ke logs</td></tr>
+      <tr><td>journalctl -b -u &lt;svc&gt;</td><td>Current boot + ek unit</td></tr>
+      <tr><td>journalctl -f</td><td>Live follow</td></tr>
+      <tr><td>journalctl -p err</td><td>Errors aur upar only</td></tr>
+      <tr><td>journalctl --since "1h ago"</td><td>Time-based filter</td></tr>
+      <tr><td>journalctl -t myapp</td><td>SyslogIdentifier se filter</td></tr>
+      <tr><td>journalctl --disk-usage</td><td>Journal kitna disk le raha hai</td></tr>
+      <tr><td>journalctl --vacuum-size=500M</td><td>Journal 500MB pe trim karo</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">systemd-analyze — Boot Profiling</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Kya karta hai</th></tr></thead>
+    <tbody>
+      <tr><td>systemd-analyze</td><td>Total boot time</td></tr>
+      <tr><td>systemd-analyze blame</td><td>Slowest units — sorted</td></tr>
+      <tr><td>systemd-analyze critical-chain</td><td>Boot ka critical path</td></tr>
+      <tr><td>systemd-analyze plot > b.svg</td><td>SVG boot timeline generate karo</td></tr>
+      <tr><td>systemd-analyze verify &lt;file&gt;</td><td>Unit file syntax validate karo</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Unit File Key Directives</div>
+  <table class="cmd-table">
+    <thead><tr><th>Directive</th><th>Matlab</th></tr></thead>
+    <tbody>
+      <tr><td>After=network.target</td><td>Networking ke baad start karo</td></tr>
+      <tr><td>Requires=</td><td>Hard dependency</td></tr>
+      <tr><td>Wants=</td><td>Soft dependency</td></tr>
+      <tr><td>ExecStart=</td><td>Main command</td></tr>
+      <tr><td>ExecStartPre=</td><td>ExecStart se pehle run karo</td></tr>
+      <tr><td>Restart=on-failure</td><td>Crash pe auto-restart</td></tr>
+      <tr><td>RestartSec=5s</td><td>Restart se pehle wait</td></tr>
+      <tr><td>User=</td><td>Specific user ke roop mein run</td></tr>
+      <tr><td>SyslogIdentifier=myapp</td><td>journalctl -t myapp ke liye</td></tr>
+      <tr><td>WantedBy=multi-user.target</td><td>Is target pe enable karo</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Boot Sequence — Quick Ref</div>
+  <table class="cmd-table">
+    <thead><tr><th>Step</th><th>Kya hota hai</th></tr></thead>
+    <tbody>
+      <tr><td>1. Power ON</td><td>Hardware POST, CPU init</td></tr>
+      <tr><td>2. BIOS/UEFI</td><td>Boot device dhundho, bootloader load karo</td></tr>
+      <tr><td>3. GRUB2</td><td>Boot menu, kernel + initramfs RAM mein load</td></tr>
+      <tr><td>4. Kernel</td><td>Hardware detect, initramfs ko temp root mount</td></tr>
+      <tr><td>5. initramfs</td><td>Real root mount karne ke liye drivers (LVM, crypto)</td></tr>
+      <tr><td>6. Real Root</td><td>initramfs se actual / partition pe pivot</td></tr>
+      <tr><td>7. systemd PID 1</td><td>default.target padho, services parallel mein start</td></tr>
+      <tr><td>8. Your Services</td><td>App start, login prompt</td></tr>
+    </tbody>
+  </table>
+</div><!-- /tab-cheatsheet -->
+
+<!-- ══════════════ TAB 3 — LAB ══════════════ -->
+<div class="tab-pane" id="tab-lab">
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"Jagu, ab main khud karta hoon — <span class="chalk-text">ek ek step carefully!</span>"</div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:8px;">Lab Goal</h3>
+    <p style="font-size:.9rem;color:rgba(255,255,255,.68);">Ek self-healing systemd service banao, deploy karo, deliberately break karo, fix karo, aur reboot ke baad verify karo ki service khud start ho gayi.</p>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">1</div><div class="lab-title">Boot time inspect karo</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cmd">systemd-analyze</span>
+<span class="cmd">systemd-analyze blame</span> | head -10
+<span class="cmd">systemd-analyze critical-chain</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">✓ Total boot time aur slowest 10 services ki list dikhi.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">2</div><div class="lab-title">Failed units check karo</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cmd">systemctl list-units</span> <span class="flg">--state=failed</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">✓ "0 loaded units listed" ya failed units list dikhi.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">3</div><div class="lab-title">Unit file likho</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <p style="font-size:.86rem;color:rgba(255,255,255,.55);margin-bottom:9px;">Create <code style="font-family:'Fira Code';font-size:.78rem">/etc/systemd/system/hello.service</code></p>
+    <pre><code>[Unit]
+Description=Hello World Service
+After=network.target
+
+[Service]
+ExecStart=/bin/bash -c "while true; do echo hello; sleep 5; done"
+Restart=on-failure
+RestartSec=3s
+
+[Install]
+WantedBy=multi-user.target</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">✓ File exist karti hai at /etc/systemd/system/hello.service</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">4</div><div class="lab-title">Enable aur start karo</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cmd">systemctl daemon-reload</span>
+<span class="cmd">systemctl enable --now</span> hello.service
+<span class="cmd">systemctl status</span> hello.service</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">✓ Status shows <code>active (running)</code></div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">5</div><div class="lab-title">Journal se logs padho</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cmd">journalctl -b -u</span> hello.service
+<span class="cm"># q dabao exit ke liye</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">✓ "hello" lines journal mein dikh rahi hain.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">6</div><div class="lab-title">Deliberately break karo aur debug karo</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <p style="font-size:.86rem;color:rgba(255,255,255,.55);margin-bottom:9px;">ExecStart galat path karo → diagnose karo → fix karo.</p>
+    <pre><code><span class="cm"># Unit file mein ExecStart galat karo:</span>
+ExecStart=/usr/bin/nonexistent-binary
+
+<span class="cmd">systemctl daemon-reload</span>
+<span class="cmd">systemctl restart</span> hello.service
+
+<span class="cm"># Error dhundho</span>
+<span class="cmd">journalctl -b -u</span> hello.service <span class="flg">-p err</span>
+
+<span class="cm"># Fix karo → daemon-reload → restart</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">✓ "No such file or directory" error journal mein dikhi. Fix ke baad service active.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">7</div><div class="lab-title">Reboot ke baad verify karo</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cmd">sudo reboot</span>
+
+<span class="cm"># Reboot ke baad:</span>
+<span class="cmd">systemctl is-active</span> hello.service   <span class="cm"># → active</span>
+<span class="cmd">journalctl -b -u</span> hello.service</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">✓ Service bina manual intervention ke reboot ke baad active hai.</div>
+  </div>
+
+  <div class="lab-prog-wrap">
+    <div style="font-size:1.4rem">🏆</div>
+    <div style="flex:1;">
+      <div style="font-family:'Architects Daughter';font-size:1.05rem;margin-bottom:6px">Lab Progress</div>
+      <div class="lab-bar"><div class="lab-fill" id="lab-fill"></div></div>
+    </div>
+    <div style="font-family:'Fira Code';font-size:.83rem;color:rgba(255,255,255,.45)" id="lab-count">0 / 7</div>
+  </div>
+
+</div><!-- /tab-lab -->
+
+<!-- FOOTER -->
+<div class="footer">
+  <p>#LearnDevOps · M01 · L01 — Boot &amp; Init · By Aryashree Pritikrishna</p>
+  <a href="https://github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap">github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap</a>
+</div>
+
+<!-- LESSON NAVIGATION -->
+<div class="lesson-nav">
+  <div class="nav-inner">
+    <a href="../day-05/L03-text-files-and-redirection.html" class="nav-btn prev">&larr; Day 5 &mdash; Text Files &amp; Redirection</a>
+    <a href="../../index.html" class="nav-btn up">&#8593; Curriculum</a>
+    <a href="../day-08/L07-user-and-group-management.html" class="nav-btn next">Day 8 &mdash; User &amp; Group Management &rarr;</a>
+  </div>
+</div>
+
+</div><!-- /blackboard -->
+
+<script>
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+  function copyCode(btn) {
+    const pre  = btn.closest('pre');
+    const text = (pre.querySelector('code') || pre).innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Done!';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 2000);
+    });
+  }
+  function toggleIQ(el) { el.classList.toggle('open'); }
+  function answer(el, correct) {
+    el.closest('.quiz-opts').querySelectorAll('.quiz-opt').forEach(o => {
+      o.style.pointerEvents = 'none';
+      if (o.getAttribute('onclick').includes('true')) o.classList.add('correct');
+    });
+    if (!correct) el.classList.add('wrong');
+  }
+  function updateLab() {
+    const boxes = document.querySelectorAll('#tab-lab .lab-chk');
+    const done  = Array.from(boxes).filter(b => b.checked).length;
+    document.getElementById('lab-fill').style.width  = Math.round(done/boxes.length*100) + '%';
+    document.getElementById('lab-count').textContent = done + ' / ' + boxes.length;
+  }
+
+  // ─── Back to top ──────────────────────────────────────────────
+  (function() {
+    var btn = document.createElement('button');
+    btn.className = 'to-top';
+    btn.innerHTML = '&#8593;';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.onclick = function() { window.scrollTo({ top:0, behavior:'smooth' }); };
+    document.body.appendChild(btn);
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        window.requestAnimationFrame(function() {
+          btn.classList.toggle('visible', window.scrollY > 400);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+  })();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>M01 · U01 · Day 07 — User &amp; Group Management | Linux Internals</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg-blackboard: #0a0e14;
+    --chalk-white:  #f1f2f6;
+    --chalk-yellow: #feca57;
+    --chalk-blue:   #48dbfb;
+    --chalk-green:  #1dd1a1;
+    --chalk-pink:   #ff9ff3;
+    --chalk-orange: #ff9f43;
+    --chalk-red:    #ff6b6b;
+    --wood-frame:   #2f3542;
+    --surface:      rgba(255,255,255,0.04);
+  }
+  @media print {
+    body { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; background:var(--bg-blackboard)!important; }
+    .blackboard { border:none!important; box-shadow:none!important; width:100%!important; margin:0!important; padding:10px!important; }
+    section { page-break-inside:avoid; }
+    .tab-nav { display:none!important; }
+    .tab-pane { display:block!important; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg-blackboard); color:var(--chalk-white); font-family:'Inter',sans-serif; padding:20px; }
+  .blackboard { max-width:1000px; margin:0 auto; border:12px solid var(--wood-frame); padding:50px; box-shadow:0 30px 60px rgba(0,0,0,.8); background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px); background-size:30px 30px; }
+
+  /* AUTHOR HEADER */
+  .author-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--chalk-yellow); padding-bottom:20px; margin-bottom:40px; }
+  .author-info h2 { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:1.8rem; }
+  .author-info p  { font-family:'Architects Daughter'; color:var(--chalk-white); font-size:1.1rem; margin-top:5px; }
+  .author-contact { text-align:right; font-family:'Fira Code',monospace; font-size:.82rem; color:var(--chalk-blue); }
+  .author-contact a { color:var(--chalk-blue); text-decoration:none; }
+  .contact-item { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:4px; }
+
+  /* PAGE TITLE */
+  h1 { font-family:'Architects Daughter',cursive; font-size:3.2rem; text-align:center; color:var(--chalk-yellow); text-transform:uppercase; margin-bottom:5px; }
+  .subtitle { text-align:center; color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1.4rem; margin-bottom:16px; }
+  .meta-badges { display:flex; justify-content:center; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
+  .badge { font-family:'Fira Code',monospace; font-size:.78rem; padding:4px 12px; border-radius:20px; border:1px solid; }
+  .badge-mod { border-color:var(--chalk-yellow); color:var(--chalk-yellow); }
+  .badge-time { border-color:var(--chalk-blue); color:var(--chalk-blue); }
+  .badge-status { border-color:var(--chalk-green); color:var(--chalk-green); }
+
+  /* TABS */
+  .tab-nav { display:flex; gap:0; margin-bottom:40px; border:2px solid var(--wood-frame); border-radius:12px; overflow:hidden; }
+  .tab-btn { flex:1; padding:14px 20px; font-family:'Architects Daughter',cursive; font-size:1.1rem; background:transparent; color:var(--chalk-white); border:none; cursor:pointer; border-right:2px solid var(--wood-frame); transition:all .2s; }
+  .tab-btn:last-child { border-right:none; }
+  .tab-btn:hover { background:rgba(255,255,255,.06); }
+  .tab-btn.active { background:rgba(254,202,87,.1); color:var(--chalk-yellow); }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; }
+
+  /* SHARED */
+  h2, h3, .handwritten, .speech-bubble, .topic-title { font-family:'Architects Daughter',cursive; }
+  section { margin-bottom:70px; padding-bottom:40px; border-bottom:2px dashed rgba(255,255,255,.1); }
+  section:last-of-type { border-bottom:none; }
+  .topic-title { color:var(--chalk-pink); font-size:2rem; margin-bottom:28px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+  .content-box { background:var(--surface); padding:25px; border-radius:15px; border:2px solid transparent; margin-bottom:20px; }
+  ul { list-style:none; padding-left:0; }
+  li { margin-bottom:13px; padding-left:28px; position:relative; }
+  li::before { content:'→'; position:absolute; left:0; color:var(--chalk-blue); }
+
+  /* CHARACTERS */
+  .doodle-container { display:flex; align-items:center; gap:28px; margin:28px 0; }
+  .doodle-container.right { justify-content:flex-end; margin-top:14px; }
+  .doodle-wrapper { display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .char-name { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:.9rem; }  .golu { width:60px; height:100px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .golu-img { width:60px; height:100px; object-fit:cover; object-position:center 20%; border-radius:10px; border:2.5px solid var(--chalk-green); box-shadow:0 0 12px rgba(29,209,161,.2); }
+  .jagu { width:70px; height:110px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .jagu-img { width:70px; height:100px; object-fit:cover; object-position:center 15%; border-radius:10px; border:2.5px solid var(--chalk-blue); box-shadow:0 0 12px rgba(72,219,251,.2); }
+
+  .speech-bubble { border:2px solid var(--chalk-white); border-radius:25px; padding:18px 26px; position:relative; max-width:72%; font-family:'Architects Daughter',cursive; font-size:1.2rem; line-height:1.5; }
+  .speech-bubble::before { content:''; position:absolute; left:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-right:14px solid var(--chalk-white); }
+  .speech-bubble.flip::before { display:none; }
+  .speech-bubble.flip::after { content:''; position:absolute; right:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-left:14px solid var(--chalk-white); }
+  .chalk-text { color:var(--chalk-yellow); font-weight:bold; }
+
+  /* INTRO */
+  .intro-banner { border:4px solid var(--chalk-yellow); padding:28px; border-radius:20px; margin-bottom:36px; background:rgba(254,202,87,.05); }
+
+  /* STATS */
+  .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; text-align:center; margin:20px 0; }
+  .stat-val { font-family:'Architects Daughter'; font-size:2.6rem; }
+  .stat-lbl { font-family:'Architects Daughter'; color:var(--chalk-blue); margin-top:4px; font-size:.95rem; }
+
+  /* DIAGRAM */
+  .diagram-container { border:3px solid var(--chalk-white); border-radius:25px; padding:36px; text-align:center; background:rgba(0,0,0,.5); margin:28px 0; }
+  .boot-chain { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:5px; }
+  .boot-node { font-family:'Architects Daughter'; font-size:.9rem; padding:8px 13px; border-radius:10px; border:2px solid; white-space:nowrap; }
+  .boot-arr { color:var(--chalk-yellow); font-size:1.2rem; }
+
+  /* TOPIC FLOW */
+  .topic-flow { display:flex; flex-direction:column; }
+  .tf-row { display:flex; align-items:flex-start; gap:14px; }
+  .tf-spine { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+  .tf-dot { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:.85rem; font-weight:700; }
+  .tf-line { width:2px; min-height:20px; flex:1; margin:3px 0; background:rgba(255,255,255,.1); }
+  .tf-body { padding:2px 0 18px; flex:1; }
+  .tf-body h4 { font-family:'Architects Daughter'; font-size:1.1rem; margin-bottom:3px; }
+  .tf-body p  { font-size:.86rem; color:rgba(255,255,255,.55); line-height:1.5; }
+
+  /* VS */
+  .vs-row { display:flex; align-items:center; gap:14px; margin:20px 0; }
+  .vs-circle { width:52px; height:52px; border:3px solid var(--chalk-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:1.3rem; color:var(--chalk-orange); flex-shrink:0; }
+
+  /* STEP BADGE */
+  .step-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:20px; padding:4px 14px; font-family:'Fira Code',monospace; font-size:.76rem; color:var(--chalk-blue); margin-bottom:16px; }
+
+  /* MISTAKE */
+  .mistake-pair { margin-bottom:22px; }
+  .m-label { font-family:'Architects Daughter'; font-size:1rem; margin-bottom:7px; color:var(--chalk-orange); }
+  .m-block { border-radius:10px; padding:12px 16px; margin-top:5px; }
+  .m-wrong { background:rgba(255,107,107,.07); border:1px solid rgba(255,107,107,.3); }
+  .m-right { background:rgba(29,209,161,.07); border:1px solid rgba(29,209,161,.3); }
+  .m-block code { font-family:'Fira Code',monospace; font-size:.8rem; color:var(--chalk-white); display:block; white-space:pre; }
+
+  /* CODE */
+  pre { background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:18px 20px; overflow-x:auto; margin:12px 0; position:relative; }
+  pre code { font-family:'Fira Code',monospace; font-size:.8rem; line-height:1.7; color:var(--chalk-white); }
+  .copy-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.13); color:rgba(255,255,255,.45); padding:3px 10px; border-radius:6px; font-family:'Fira Code',monospace; font-size:.7rem; cursor:pointer; transition:all .15s; }
+  .copy-btn:hover { background:rgba(254,202,87,.2); color:var(--chalk-yellow); border-color:var(--chalk-yellow); }
+  .copy-btn.done { background:rgba(29,209,161,.2); color:var(--chalk-green); border-color:var(--chalk-green); }
+  .cm  { color:#546e7a; }
+  .cmd { color:var(--chalk-blue); }
+  .flg { color:var(--chalk-pink); }
+  .str { color:var(--chalk-green); }
+
+  /* INTERVIEW Q */
+  .iq { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .iq-q { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; cursor:pointer; }
+  .iq-q:hover { background:rgba(255,255,255,.03); }
+  .iq-num { width:28px; height:28px; border-radius:50%; background:rgba(72,219,251,.13); color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+  .iq-text { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; line-height:1.4; }
+  .iq-arr { color:rgba(255,255,255,.28); font-size:.9rem; transition:transform .2s; margin-top:4px; }
+  .iq.open .iq-arr { transform:rotate(180deg); }
+  .iq-a { display:none; padding:0 20px 16px 60px; font-size:.88rem; color:rgba(255,255,255,.62); line-height:1.65; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; margin-top:-1px; }
+  .iq.open .iq-a { display:block; }
+
+  /* QUIZ */
+  .quiz-item { margin-bottom:22px; padding-bottom:16px; border-bottom:1px dashed rgba(255,255,255,.06); }
+  .quiz-q { font-family:'Architects Daughter'; font-size:1.15rem; margin-bottom:10px; }
+  .quiz-opts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .quiz-opt { font-family:'Architects Daughter'; color:var(--chalk-blue); font-size:1rem; cursor:pointer; padding:7px 10px; border-radius:8px; border:1px solid rgba(72,219,251,.2); transition:all .15s; }
+  .quiz-opt:hover { background:rgba(72,219,251,.08); }
+  .quiz-opt.correct { background:rgba(29,209,161,.14); border-color:var(--chalk-green); color:var(--chalk-green); pointer-events:none; }
+  .quiz-opt.wrong   { background:rgba(255,107,107,.1); border-color:var(--chalk-red); color:var(--chalk-red); pointer-events:none; }
+  .answer-key { border:2px dashed var(--chalk-green); padding:18px 22px; border-radius:14px; margin-top:28px; background:rgba(29,209,161,.05); }
+
+  /* CLOSING CARDS */
+  .closing-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+  .cc { background:var(--surface); border:2px solid; border-radius:16px; padding:18px 20px; }
+  .cc .icon { font-size:1.5rem; margin-bottom:7px; }
+  .cc .title { font-family:'Architects Daughter'; font-size:1.05rem; margin-bottom:6px; }
+  .cc .body  { font-size:.86rem; color:rgba(255,255,255,.68); line-height:1.6; }
+  .cc.takeaway  { border-color:var(--chalk-yellow); }
+  .cc.interview { border-color:var(--chalk-blue); }
+  .cc.assign    { border-color:var(--chalk-green); }
+  .cc.challenge { border-color:var(--chalk-orange); }
+  .cc.mistake   { border-color:var(--chalk-red); }
+  .cc.protip    { border-color:var(--chalk-pink); }
+
+  /* CHEAT TABLE */
+  .cmd-table { width:100%; border-collapse:collapse; margin:14px 0; }
+  .cmd-table th { color:var(--chalk-yellow); border-bottom:2px solid var(--chalk-yellow); text-align:left; padding:10px 12px; font-family:'Architects Daughter'; font-size:1rem; }
+  .cmd-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.07); font-size:.81rem; vertical-align:top; }
+  .cmd-table td:first-child { font-family:'Fira Code',monospace; color:var(--chalk-blue); white-space:nowrap; }
+  .cmd-table td:last-child  { color:rgba(255,255,255,.58); }
+  .cs-title { font-family:'Architects Daughter'; color:var(--chalk-pink); font-size:1.5rem; margin:32px 0 8px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+
+  /* LAB */
+  .lab-step { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:20px 22px; margin-bottom:13px; }
+  .lab-hdr { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .lab-num { width:30px; height:30px; border-radius:50%; background:rgba(254,202,87,.13); color:var(--chalk-yellow); font-family:'Architects Daughter'; font-size:1.1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .lab-title { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; }
+  .lab-chk { width:18px; height:18px; accent-color:var(--chalk-green); cursor:pointer; }
+  .accept { background:rgba(29,209,161,.05); border:1px solid rgba(29,209,161,.28); border-radius:9px; padding:10px 14px; margin-top:9px; font-size:.83rem; color:var(--chalk-green); }
+  .lab-prog-wrap { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:16px 20px; display:flex; align-items:center; gap:14px; margin-top:10px; }
+  .lab-bar { flex:1; height:6px; background:rgba(255,255,255,.09); border-radius:3px; }
+  .lab-fill { height:100%; background:linear-gradient(90deg,var(--chalk-green),var(--chalk-blue)); border-radius:3px; width:0; transition:width .3s; }
+
+  /* SECURITY BOX */
+  .security-box { border:3px solid var(--chalk-red); border-radius:16px; padding:22px 26px; background:rgba(255,107,107,.04); margin:20px 0; }
+  .security-box h3 { font-family:'Architects Daughter'; color:var(--chalk-red); font-size:1.3rem; margin-bottom:14px; }
+
+  /* FOOTER */
+  .footer { text-align:center; color:#555; margin-top:60px; font-family:'Architects Daughter'; border-top:1px solid rgba(255,255,255,.09); padding-top:20px; }
+  .footer a { color:var(--chalk-blue); text-decoration:none; font-family:'Fira Code'; font-size:.85rem; }
+
+  
+  /* LESSON NAVIGATION */
+  .lesson-nav { margin-top:40px; padding-top:20px; border-top:2px solid rgba(255,255,255,.09); }
+  .nav-inner { display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap; }
+  .nav-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:10px; font-family:'Architects Daughter',cursive; font-size:.92rem; text-decoration:none; transition:all .15s; border:1px solid rgba(255,255,255,.12); color:var(--chalk-white); background:var(--surface); white-space:nowrap; }
+  .nav-btn:hover { border-color:var(--chalk-yellow); color:var(--chalk-yellow); background:rgba(254,202,87,.06); transform:translateY(-1px); }
+  .nav-btn.up { border-color:rgba(72,219,251,.2); color:var(--chalk-blue); }
+  .nav-btn.up:hover { border-color:var(--chalk-blue); background:rgba(72,219,251,.06); }
+  .nav-btn.prev { border-color:rgba(255,255,255,.1); }
+  .nav-btn.next { border-color:rgba(255,255,255,.1); }
+  .nav-btn.disabled { opacity:.3; pointer-events:none; border-color:transparent; background:transparent; }
+  @media(max-width:680px) {
+    .nav-inner { flex-direction:column; align-items:stretch; }
+    .nav-btn { justify-content:center; }
+  }
+
+  /* BACK TO TOP floating button */
+  .to-top { position:fixed; bottom:30px; right:30px; width:48px; height:48px; border-radius:50%; background:var(--chalk-yellow); color:#0a0e14; border:none; cursor:pointer; font-size:1.3rem; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:all .25s ease; z-index:1000; box-shadow:0 4px 16px rgba(254,202,87,.25); }
+  .to-top.visible { opacity:1; visibility:visible; }
+  .to-top:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(254,202,87,.35); }
+  @media(max-width:680px) {
+    .to-top { bottom:16px; right:16px; width:42px; height:42px; font-size:1.1rem; }
+  }
+
+
+@media(max-width:680px) {
+    .blackboard { padding:22px 16px; }
+    h1 { font-size:2.1rem; }
+    .closing-grid,.stat-row { grid-template-columns:1fr; }
+    .author-header { flex-direction:column; gap:14px; }
+    .author-contact { text-align:left; }
+    .vs-row { flex-direction:column; }
+    .boot-chain { flex-direction:column; align-items:flex-start; }
+    .quiz-opts { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="blackboard">
+
+<!-- AUTHOR HEADER -->
+<header class="author-header">
+  <div class="author-info">
+    <h2>Aryashree Pritikrishna</h2>
+    <p>AI Powered DevOps &amp; Platform Engineering</p>
+  </div>
+  <div class="author-contact">
+    <div class="contact-item">&#128188; <a href="https://www.linkedin.com/in/aryashreepritikrishna/">linkedin.com/in/aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128250; <a href="https://www.youtube.com/@aryashreepritikrishna">youtube.com/@aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128231; <a href="mailto:aryashreep@gmail.com">aryashreep@gmail.com</a></div>
+  </div>
+</header>
+
+<!-- PAGE TITLE -->
+<header>
+  <h1>User &amp; Group Management</h1>
+  <p class="subtitle">M01 · U01 · Day 07 — Linux Internals</p>
+  <div class="meta-badges">
+    <span class="badge badge-mod">M01 · Linux Foundations</span>
+    <span class="badge badge-time">&#9203; 45 min</span>
+    <span class="badge badge-status">&#9679; Draft</span>
+  </div>
+</header>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('lesson',this)">&#128214; Lesson</button>
+  <button class="tab-btn" onclick="switchTab('cheatsheet',this)">&#128203; Cheat Sheet</button>
+  <button class="tab-btn" onclick="switchTab('lab',this)">&#129514; Lab</button>
+</div>
+
+<!-- ══════════════ TAB 1 — LESSON ══════════════ -->
+<div class="tab-pane active" id="tab-lesson">
+
+<!-- INTRO DIALOGUE -->
+<section>
+  <div class="intro-banner">
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"Jagu bhai, new developer onboard hua. Usse database access dena hai — but <span class="chalk-text">sirf read only</span>. Sysadmin kya karta hai?"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"Golu, Linux mein <span class="chalk-text">'least privilege' principle</span> follow karte hain — sirf utna access do jitna zaroori ho. Ye lesson ke baad tum production-grade user management kar sakte ho!"</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="content-box" style="margin-top:20px;border-left:4px solid var(--chalk-yellow);">
+      <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:9px;">Aaj kya seekhenge?</h3>
+      <p class="handwritten" style="font-size:1.1rem;">useradd/usermod/userdel, groupadd/gpasswd, passwd/su/sudo/sudoers — aur woh teeno files jo har Linux admin ko raat mein sapne mein aate hain: <b>/etc/passwd, /etc/shadow, /etc/group</b>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- LEARNING OBJECTIVES -->
+<section>
+  <div class="topic-title">&#127919; Learning Objectives</div>
+  <div class="content-box" style="border-left:5px solid var(--chalk-green);">
+    <ul>
+      <li><strong>Create, modify, and delete</strong> users and groups on any Linux system.</li>
+      <li><strong>Assign users to groups</strong> for shared resource access without giving root.</li>
+      <li><strong>Configure sudo access</strong> safely — per-command, per-group, with or without password.</li>
+      <li><strong>Read and interpret</strong> /etc/passwd, /etc/shadow, /etc/group confidently.</li>
+    </ul>
+    <p class="handwritten" style="color:var(--chalk-red);margin-top:14px;font-size:1.1rem;">
+      &#128161; <span class="chalk-text">Kyu Seekhein?</span> Kyunki production mein galat user permissions = security breach. Har DevOps engineer yahi se start karta hai!
+    </p>
+  </div>
+</section>
+
+<!-- STORY -->
+<section>
+  <div class="step-badge">&#9312; Story · 2 min</div>
+  <div class="topic-title">&#128214; The Production Disaster</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);">
+    <p class="handwritten" style="font-size:1.2rem;line-height:1.75;">
+      Ek startup mein <span class="chalk-text">naya developer</span> join kiya. Kaam karne ke liye ushe root SSH access de diya gaya — "quick hai bhai, baad mein theek karenge."
+    </p>
+    <p style="font-size:.93rem;color:rgba(255,255,255,.7);margin-top:14px;line-height:1.7;">
+      Teen din baad, developer ne ek script run ki — <code style="font-family:'Fira Code';color:var(--chalk-blue)">DROP DATABASE production;</code> — galti se. Root tha, koi restriction nahi thi. Database gaya, audit trail nahi thi, kisi ko pata nahi chala kisne kiya — sab logs root ke naam pe.
+    </p>
+    <p style="font-size:.9rem;color:var(--chalk-green);margin-top:12px;font-style:italic;">
+      Lesson: <span style="color:var(--chalk-yellow)">Principle of Least Privilege</span> — har user ko minimum zaroori access. Groups + sudo rules = accountability + safety.
+    </p>
+    <div class="stat-row" style="margin-top:18px;">
+      <div><div class="stat-val" style="color:var(--chalk-red)">2020</div><div class="stat-lbl">Twitter breach — root access misuse</div></div>
+      <div><div class="stat-val" style="color:var(--chalk-orange)">37%</div><div class="stat-lbl">Cloud incidents due to over-privileged users</div></div>
+      <div><div class="stat-val" style="color:var(--chalk-green)">0</div><div class="stat-lbl">Audit trail when everyone uses root</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- REAL-WORLD PROBLEM + TOPIC FLOW -->
+<section>
+  <div class="step-badge">&#9313; Real-world Problem · 3 min</div>
+  <div class="topic-title">&#10071; Kya Toot-ta Hai Iske Bina?</div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:16px;">Topic Flow — Is Lesson Ka Rasta (P→S→V→T→H→B→I→A)</h3>
+    <div class="topic-flow">
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,107,107,.14);color:var(--chalk-red)">P</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-red)">Problem</h4><p>Too many root users = security disaster, no audit trail.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">S</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-yellow)">Story</h4><p>Startup developer dropped production DB — root access, no accountability.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">V</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Visualization</h4><p>useradd → group assign → sudo rule → /etc/passwd + shadow + group files.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,243,.14);color:var(--chalk-pink)">T</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-pink)">Theory</h4><p>useradd/usermod, groupadd/gpasswd, passwd/su/sudo/sudoers, config files.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(29,209,161,.14);color:var(--chalk-green)">H</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-green)">Hands-on</h4><p>Create tokyo, berlin, professor — groups developers, admins — test access.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,67,.14);color:var(--chalk-orange)">B</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-orange)">Best Practice</h4><p>Never direct root SSH, use groups, set password expiry, lock service accounts.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">I</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Interview</h4><p>usermod -G vs -aG, /etc/shadow purpose, checking group membership.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">A</div></div><div class="tf-body" style="padding-bottom:0"><h4 style="color:var(--chalk-yellow)">Assignment</h4><p>3 users, 2 groups, shared /opt/dev-project with correct permissions.</p></div></div>
+    </div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-red);">
+    <h3 class="handwritten" style="color:var(--chalk-red);margin-bottom:13px;">Bina user management ke kya hoga?</h3>
+    <ul>
+      <li><strong>Privilege escalation attacks</strong> — attacker ek low-priv account compromise kare, fir root tak pahunche</li>
+      <li><strong>Accidental deletions</strong> — koi bhi rm -rf / run kar sake, koi rok nahi</li>
+      <li><strong>Audit trail gone</strong> — "root ne kiya" — lekin kaun tha root?</li>
+      <li><strong>Compliance failures</strong> — PCI-DSS, SOC2 mein individual accounts mandatory hain</li>
+      <li><strong>Password sharing</strong> — ek breach = sab exposed</li>
+    </ul>
+  </div>
+</section>
+
+<!-- THEORY GROUP 1: useradd/usermod/userdel -->
+<section>
+  <div class="step-badge">&#9314; Theory · 12 min</div>
+  <div class="topic-title">&#128100; Group 1: useradd / usermod / userdel</div>
+
+  <div class="content-box" style="border:2px dashed var(--chalk-white);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:11px;">&#128161; Analogy: HR Department</h3>
+    <p class="handwritten" style="font-size:1.15rem;line-height:1.75;">
+      <span class="chalk-text">useradd:</span> HR ne naya employee register kiya — ID card banai, desk assign ki (home dir).<br/>
+      <span class="chalk-text">usermod:</span> HR ne employee ka department change kiya, ya designation update ki.<br/>
+      <span class="chalk-text">userdel:</span> HR ne employee ko exit kiya — records hata diye.
+    </p>
+  </div>
+
+  <pre><code><span class="cm"># Create user with home directory and bash shell</span>
+<span class="cmd">sudo useradd</span> <span class="flg">-m -s</span> /bin/bash username
+<span class="cmd">sudo passwd</span> username
+
+<span class="cm"># Create user with specific UID and comment</span>
+<span class="cmd">sudo useradd</span> <span class="flg">-m -s</span> /bin/bash <span class="flg">-u</span> 1501 <span class="flg">-c</span> <span class="str">"Tokyo Dev"</span> tokyo
+
+<span class="cm"># Modify user — add to supplementary group (APPEND!)</span>
+<span class="cmd">sudo usermod</span> <span class="flg">-aG</span> developers username
+
+<span class="cm"># Lock account (disable login without deleting)</span>
+<span class="cmd">sudo usermod</span> <span class="flg">-L</span> username   <span class="cm"># lock — puts ! in /etc/shadow</span>
+<span class="cmd">sudo usermod</span> <span class="flg">-U</span> username   <span class="cm"># unlock</span>
+
+<span class="cm"># Change user's shell</span>
+<span class="cmd">sudo usermod</span> <span class="flg">-s</span> /sbin/nologin www-data
+
+<span class="cm"># Delete user (keep home directory)</span>
+<span class="cmd">sudo userdel</span> username
+<span class="cm"># Delete user AND home directory + mail spool</span>
+<span class="cmd">sudo userdel</span> <span class="flg">-r</span> username</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-orange);">
+    <h3 class="handwritten" style="color:var(--chalk-orange);margin-bottom:10px;">&#9888; Critical Warning: -G vs -aG</h3>
+    <div class="mistake-pair">
+      <div class="m-label">WRONG — Replaces ALL existing groups!</div>
+      <div class="m-block m-wrong"><code>sudo usermod -G developers tokyo
+<span style="color:var(--chalk-red)"># tokyo loses docker, sudo, and all other groups!</span></code></div>
+    </div>
+    <div class="mistake-pair">
+      <div class="m-label">RIGHT — Appends to existing groups</div>
+      <div class="m-block m-right"><code>sudo usermod -aG developers tokyo
+<span style="color:var(--chalk-green)"># tokyo keeps all existing groups, developers added</span></code></div>
+    </div>
+  </div>
+</section>
+
+<!-- THEORY GROUP 2: groupadd/groupmod/gpasswd -->
+<section>
+  <div class="topic-title">&#128101; Group 2: groupadd / groupmod / gpasswd</div>
+
+  <pre><code><span class="cm"># Create a group</span>
+<span class="cmd">sudo groupadd</span> developers
+<span class="cmd">sudo groupadd</span> <span class="flg">-g</span> 1500 dbadmins   <span class="cm"># with specific GID</span>
+
+<span class="cm"># Add user to group (via gpasswd)</span>
+<span class="cmd">sudo gpasswd</span> <span class="flg">-a</span> username developers   <span class="cm"># add member</span>
+<span class="cmd">sudo gpasswd</span> <span class="flg">-d</span> username developers   <span class="cm"># remove member</span>
+
+<span class="cm"># Set group administrator</span>
+<span class="cmd">sudo gpasswd</span> <span class="flg">-A</span> tokyo developers   <span class="cm"># tokyo can manage group members</span>
+
+<span class="cm"># Rename group</span>
+<span class="cmd">sudo groupmod</span> <span class="flg">-n</span> devteam developers
+
+<span class="cm"># Check group members</span>
+<span class="cmd">getent group</span> developers   <span class="cm"># developers:x:1001:tokyo,berlin,golu</span>
+<span class="cmd">groups</span> username           <span class="cm"># show all groups for user</span>
+<span class="cmd">id</span> username               <span class="cm"># uid, gid, groups — full info</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <div class="diagram-container">
+    <p class="handwritten" style="color:var(--chalk-pink);font-size:1.25rem;margin-bottom:18px;">User → Groups → Resources</p>
+    <div class="boot-chain">
+      <span class="boot-node" style="border-color:var(--chalk-yellow);color:var(--chalk-yellow)">tokyo (user)</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-blue);color:var(--chalk-blue)">developers (group)</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-green);color:var(--chalk-green)">/opt/dev-project (770)</span>
+    </div>
+    <div class="boot-chain" style="margin-top:12px;">
+      <span class="boot-node" style="border-color:var(--chalk-orange);color:var(--chalk-orange)">berlin (user)</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-blue);color:var(--chalk-blue)">developers + admins</span>
+      <span class="boot-arr">→</span>
+      <span class="boot-node" style="border-color:var(--chalk-pink);color:var(--chalk-pink)">sudo access</span>
+    </div>
+    <p class="handwritten" style="margin-top:20px;font-size:1.05rem;">Groups = <span class="chalk-text">scalable access control.</span> 100 users, 1 group change = done!</p>
+  </div>
+</section>
+
+<!-- THEORY GROUP 3: passwd/su/sudo/sudoers -->
+<section>
+  <div class="topic-title">&#128274; Group 3: passwd / su / sudo / sudoers</div>
+
+  <pre><code><span class="cm"># Change your own password</span>
+<span class="cmd">passwd</span>
+
+<span class="cm"># Root changes another user's password</span>
+<span class="cmd">sudo passwd</span> username
+
+<span class="cm"># Force password change on next login</span>
+<span class="cmd">sudo passwd</span> <span class="flg">-e</span> username
+
+<span class="cm"># Switch to another user (keeps current environment)</span>
+<span class="cmd">su</span> username
+
+<span class="cm"># Switch to root with full login environment</span>
+<span class="cmd">su -</span>          <span class="cm"># full login shell — loads root's .bashrc, PATH etc</span>
+
+<span class="cm"># Run single command as root</span>
+<span class="cmd">sudo</span> command
+
+<span class="cm"># Run command as another user</span>
+<span class="cmd">sudo</span> <span class="flg">-u</span> www-data command
+
+<span class="cm"># Open root shell (equivalent to sudo su -)</span>
+<span class="cmd">sudo -i</span>       <span class="cm"># or: sudo su -</span>
+
+<span class="cm"># Edit sudoers SAFELY — validates syntax before saving!</span>
+<span class="cmd">sudo visudo</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);margin-top:20px;">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:14px;">sudoers File Format — /etc/sudoers</h3>
+    <pre><code><span class="cm"># Syntax: user  HOST=(run_as_user:run_as_group)  commands</span>
+
+<span class="cm"># Full sudo for a user</span>
+<span class="str">ubuntu</span>  ALL=(ALL:ALL)  ALL
+
+<span class="cm"># Group with no-password docker command</span>
+<span class="str">%developers</span>  ALL=(ALL)  NOPASSWD: /usr/bin/docker
+
+<span class="cm"># tokyo can only restart nginx, no password</span>
+<span class="str">tokyo</span>  ALL=(ALL)  NOPASSWD: /usr/bin/systemctl restart nginx
+
+<span class="cm"># DANGEROUS — avoid in production!</span>
+<span class="cm"># username ALL=(ALL) NOPASSWD: ALL</span>
+
+<span class="cm"># Drop-in files (preferred over editing sudoers directly)</span>
+<span class="cm"># /etc/sudoers.d/developers</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="font-size:.85rem;color:rgba(255,255,255,.55);margin-top:8px;">Always use <code style="font-family:'Fira Code';color:var(--chalk-blue)">sudo visudo</code> — never edit /etc/sudoers directly. A syntax error can lock you out of sudo!</p>
+  </div>
+
+  <div class="vs-row" style="margin-top:22px;">
+    <div class="content-box" style="flex:1;border-color:var(--chalk-blue);">
+      <h3 class="handwritten" style="color:var(--chalk-blue);">su — Switch User</h3>
+      <ul>
+        <li>Requires the target user's password</li>
+        <li><code style="font-family:'Fira Code';font-size:.78rem">su username</code> — partial env switch</li>
+        <li><code style="font-family:'Fira Code';font-size:.78rem">su -</code> — full login environment</li>
+        <li>No audit trail in sudoers log</li>
+        <li style="color:var(--chalk-orange)">Avoid sharing root password &#9888;</li>
+      </ul>
+    </div>
+    <div class="vs-circle">VS</div>
+    <div class="content-box" style="flex:1;border-color:var(--chalk-green);">
+      <h3 class="handwritten" style="color:var(--chalk-green);">sudo — Superuser Do</h3>
+      <ul>
+        <li>Uses YOUR own password</li>
+        <li>Granular rules per user/group/command</li>
+        <li>Full audit log in /var/log/auth.log</li>
+        <li>Timeout after 5 min (configurable)</li>
+        <li style="color:var(--chalk-green)">Production standard &#10003;</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- THEORY GROUP 4: Config Files -->
+<section>
+  <div class="topic-title">&#128196; Group 4: /etc/passwd / /etc/shadow / /etc/group</div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);margin-bottom:20px;">
+    <h3 class="handwritten" style="color:var(--chalk-blue);margin-bottom:12px;">/etc/passwd — User Database (world-readable)</h3>
+    <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:10px;">Format: <code style="font-family:'Fira Code'">username : x : UID : GID : comment : home : shell</code></p>
+    <pre><code><span class="cm"># /etc/passwd — NOT passwords (moved to /etc/shadow)</span>
+<span class="cm"># username:x:UID:GID:comment:homedir:shell</span>
+
+<span class="str">root</span>:x:0:0:root:/root:/bin/bash
+<span class="str">www-data</span>:x:33:33:www-data:/var/www:/usr/sbin/nologin
+<span class="str">tokyo</span>:x:1001:1001:Tokyo Dev:/home/tokyo:/bin/bash
+<span class="str">berlin</span>:x:1002:1002:Berlin Dev:/home/berlin:/bin/bash
+
+<span class="cm"># x = password stored in /etc/shadow</span>
+<span class="cm"># /usr/sbin/nologin = service account, no interactive login</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-red);margin-bottom:20px;">
+    <h3 class="handwritten" style="color:var(--chalk-red);margin-bottom:12px;">/etc/shadow — Password Hashes (root-only, 640)</h3>
+    <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:10px;">Format: <code style="font-family:'Fira Code'">username : hash : lastchange : min : max : warn : inactive : expire</code></p>
+    <pre><code><span class="cm"># /etc/shadow — readable only by root</span>
+<span class="cm"># username:$algo$salt$hash:lastchange:min:max:warn:inactive:expire:</span>
+
+<span class="str">tokyo</span>:$6$rounds=5000$salt$hashhash...:19500:0:90:7:::
+<span class="cm">#      ^^^ $6 = SHA-512, $5 = SHA-256, $1 = MD5 (obsolete)</span>
+<span class="cm">#                                        ^^^^ days since Jan 1 1970</span>
+<span class="cm">#                                             ^^^ 0 = no min age</span>
+<span class="cm">#                                               ^^^^ 90 = max days</span>
+<span class="cm">#                                                  ^^^ warn 7 days before</span>
+
+<span class="cm"># Set password expiry policy</span>
+<span class="cmd">sudo chage</span> <span class="flg">-M</span> 90 username    <span class="cm"># max 90 days</span>
+<span class="cmd">sudo chage</span> <span class="flg">-l</span> username        <span class="cm"># list policy</span>
+
+<span class="cm"># Locked account has ! prefix</span>
+<span class="str">lockeduser</span>:!$6$hash...:19500:0:99999:7:::</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:12px;">/etc/group — Group Database (world-readable)</h3>
+    <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:10px;">Format: <code style="font-family:'Fira Code'">groupname : x : GID : member1,member2,...</code></p>
+    <pre><code><span class="cm"># /etc/group</span>
+<span class="cm"># groupname:x:GID:members</span>
+
+<span class="str">root</span>:x:0:
+<span class="str">sudo</span>:x:27:berlin,professor
+<span class="str">developers</span>:x:1001:tokyo,berlin
+<span class="str">admins</span>:x:1002:berlin,professor
+<span class="str">docker</span>:x:998:tokyo,berlin
+
+<span class="cm"># Quick lookups</span>
+<span class="cmd">getent group</span> developers     <span class="cm"># developers:x:1001:tokyo,berlin</span>
+<span class="cmd">id</span> tokyo                    <span class="cm"># uid=1001(tokyo) gid=1001(tokyo) groups=1001(tokyo),1002(developers),998(docker)</span>
+<span class="cmd">groups</span> tokyo                <span class="cm"># tokyo : tokyo developers docker</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+</section>
+
+<!-- SECURITY BEST PRACTICES -->
+<section>
+  <div class="step-badge">&#9315; Best Practices · 3 min</div>
+  <div class="topic-title">&#128737; Security Best Practices</div>
+  <div class="security-box">
+    <h3>Production-Grade Security Rules</h3>
+    <ul>
+      <li><strong>Never give direct root SSH</strong> — use sudo + individual accounts. Every action is logged with the real username.</li>
+      <li><strong>Use groups for resource access</strong> — not individual ACLs. 100 devs, 1 group rule = maintainable.</li>
+      <li><strong>Set password expiry:</strong> <code style="font-family:'Fira Code';color:var(--chalk-blue)">chage -M 90 username</code> — enforce rotation policy.</li>
+      <li><strong>Lock service accounts:</strong> <code style="font-family:'Fira Code';color:var(--chalk-blue)">usermod -s /sbin/nologin www-data</code> — prevent interactive login.</li>
+      <li><strong>Use sudoers.d drop-in files</strong> — never edit /etc/sudoers directly, always <code style="font-family:'Fira Code';color:var(--chalk-blue)">visudo</code>.</li>
+      <li><strong>Audit sudo access regularly:</strong> <code style="font-family:'Fira Code';color:var(--chalk-blue)">grep -r 'ALL' /etc/sudoers /etc/sudoers.d/</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- LIVE DEMO -->
+<section>
+  <div class="step-badge">&#9316; Live Demo · 15 min</div>
+  <div class="topic-title">&#127910; Demo: Onboarding Two Developers</div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:14px;">4 Steps — Production Workflow</h3>
+
+    <p class="handwritten" style="color:var(--chalk-yellow);margin-bottom:8px;">Step 1 — Create Users</p>
+    <pre><code><span class="cmd">sudo useradd</span> <span class="flg">-m -s</span> /bin/bash <span class="flg">-c</span> <span class="str">"Tokyo Developer"</span> tokyo
+<span class="cmd">sudo useradd</span> <span class="flg">-m -s</span> /bin/bash <span class="flg">-c</span> <span class="str">"Berlin Developer"</span> berlin
+<span class="cmd">sudo passwd</span> tokyo
+<span class="cmd">sudo passwd</span> berlin</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+    <p class="handwritten" style="color:var(--chalk-yellow);margin-bottom:8px;margin-top:16px;">Step 2 — Create Groups</p>
+    <pre><code><span class="cmd">sudo groupadd</span> developers
+<span class="cmd">sudo groupadd</span> admins</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+    <p class="handwritten" style="color:var(--chalk-yellow);margin-bottom:8px;margin-top:16px;">Step 3 — Assign Users to Groups</p>
+    <pre><code><span class="cm"># tokyo → developers only</span>
+<span class="cmd">sudo usermod</span> <span class="flg">-aG</span> developers tokyo
+
+<span class="cm"># berlin → developers + admins</span>
+<span class="cmd">sudo usermod</span> <span class="flg">-aG</span> developers,admins berlin</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+    <p class="handwritten" style="color:var(--chalk-yellow);margin-bottom:8px;margin-top:16px;">Step 4 — Test and Verify</p>
+    <pre><code><span class="cm"># Verify group memberships</span>
+<span class="cmd">id</span> tokyo       <span class="cm"># uid=1001(tokyo) ... groups=1001(tokyo),1002(developers)</span>
+<span class="cmd">id</span> berlin      <span class="cm"># uid=1002(berlin) ... groups=1002(berlin),1003(admins),1002(developers)</span>
+<span class="cmd">getent group</span> developers   <span class="cm"># developers:x:1002:tokyo,berlin</span>
+
+<span class="cm"># Test shared directory</span>
+<span class="cmd">sudo mkdir</span> /opt/dev-project
+<span class="cmd">sudo chown</span> root:developers /opt/dev-project
+<span class="cmd">sudo chmod</span> 775 /opt/dev-project
+
+<span class="cm"># Switch to tokyo and test write access</span>
+<span class="cmd">su -</span> tokyo
+<span class="cmd">touch</span> /opt/dev-project/test.txt   <span class="cm"># should succeed!</span>
+<span class="cmd">exit</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+</section>
+
+<!-- COMMON MISTAKES -->
+<section>
+  <div class="step-badge">&#9317; Common Mistakes · 5 min</div>
+  <div class="topic-title">&#9888; Teen Common Mistakes</div>
+
+  <div class="mistake-pair">
+    <div class="m-label">Mistake 1 — sudo su - vs sudo -i (environment differences)</div>
+    <div class="m-block m-wrong"><code>sudo su -                <span style="color:var(--chalk-red)"># spawns new shell, PAM modules may not run</span></code></div>
+    <div class="m-block m-right"><code>sudo -i                  <span style="color:var(--chalk-green)"># proper interactive root — runs PAM, loads full env</span></code></div>
+  </div>
+
+  <div class="mistake-pair">
+    <div class="m-label">Mistake 2 — usermod -G vs usermod -aG (CRITICAL!)</div>
+    <div class="m-block m-wrong"><code>sudo usermod -G developers tokyo  <span style="color:var(--chalk-red)"># REPLACES all groups! tokyo loses docker, sudo etc</span></code></div>
+    <div class="m-block m-right"><code>sudo usermod -aG developers tokyo <span style="color:var(--chalk-green)"># APPENDS. -a = append. Always use -aG!</span></code></div>
+  </div>
+
+  <div class="mistake-pair">
+    <div class="m-label">Mistake 3 — Shared root password vs individual sudo</div>
+    <div class="m-block m-wrong"><code>ssh root@server             <span style="color:var(--chalk-red)"># Who did what? No audit trail. Password shared.</span></code></div>
+    <div class="m-block m-right"><code>ssh tokyo@server            <span style="color:var(--chalk-green)"># then: sudo command → logs show tokyo ran it</span>
+<span style="color:var(--chalk-green)"># /var/log/auth.log: tokyo : TTY=pts/0 ; COMMAND=/bin/rm ...</span></code></div>
+  </div>
+</section>
+
+<!-- INTERVIEW QUESTIONS -->
+<section>
+  <div class="step-badge">&#9318; Interview Questions</div>
+  <div class="topic-title">&#127919; Interview Prep</div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q">
+      <div class="iq-num">1</div>
+      <div class="iq-text">What is the difference between usermod -G and usermod -aG?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a"><code style="font-family:'Fira Code'">usermod -G groupname user</code> REPLACES all supplementary group memberships — the user loses every group except the one specified. <code style="font-family:'Fira Code'">usermod -aG groupname user</code> APPENDS the new group while keeping all existing ones. In production, always use <strong>-aG</strong>. Forgetting the <code style="font-family:'Fira Code'">-a</code> flag has caused incidents where users suddenly lost access to docker, sudo, and other critical groups.</div>
+  </div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q">
+      <div class="iq-num">2</div>
+      <div class="iq-text">How do you grant a user sudo access for only one specific command?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">Edit sudoers with <code style="font-family:'Fira Code'">sudo visudo</code> (or create a file in /etc/sudoers.d/) and add: <code style="font-family:'Fira Code'">tokyo ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx</code>. The full path to the command is required. You can add multiple commands comma-separated. Using <code style="font-family:'Fira Code'">visudo</code> is mandatory — it validates syntax before saving, preventing lockouts.</div>
+  </div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q">
+      <div class="iq-num">3</div>
+      <div class="iq-text">What is /etc/shadow and why is it separate from /etc/passwd?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">/etc/passwd is world-readable (permissions 644) because many programs need to look up usernames by UID. If password hashes were in /etc/passwd, anyone could run offline dictionary attacks. /etc/shadow (permissions 640, owned by root:shadow) stores the actual hashed passwords, last change date, expiry policy, and account status. Only root and members of the shadow group can read it. This separation is called "shadow password suite" and has been standard since the 1980s.</div>
+  </div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q">
+      <div class="iq-num">4</div>
+      <div class="iq-text">How do you check which groups a user belongs to?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">Three commands: (1) <code style="font-family:'Fira Code'">groups username</code> — simple list; (2) <code style="font-family:'Fira Code'">id username</code> — full details including UID, primary GID, and all supplementary groups; (3) <code style="font-family:'Fira Code'">getent group | grep username</code> — shows all groups where the user appears as a member. Note: if a user was added to a group while logged in, they need to log out and back in (or run <code style="font-family:'Fira Code'">newgrp groupname</code>) for the new group to take effect in the current session.</div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section>
+  <div class="step-badge">&#9319; Quick Quiz</div>
+  <div class="topic-title">&#9997; Quiz Yourself</div>
+
+  <div class="quiz-item">
+    <div class="quiz-q">1. Which command adds a user to a group WITHOUT removing existing group memberships?</div>
+    <div class="quiz-opts">
+      <span class="quiz-opt" onclick="answer(this,false)">a) sudo usermod -G developers tokyo</span>
+      <span class="quiz-opt" onclick="answer(this,true)">b) sudo usermod -aG developers tokyo</span>
+      <span class="quiz-opt" onclick="answer(this,false)">c) sudo groupadd -u tokyo developers</span>
+      <span class="quiz-opt" onclick="answer(this,false)">d) sudo gpasswd -G developers tokyo</span>
+    </div>
+  </div>
+
+  <div class="quiz-item">
+    <div class="quiz-q">2. Where are actual password hashes stored in modern Linux?</div>
+    <div class="quiz-opts">
+      <span class="quiz-opt" onclick="answer(this,false)">a) /etc/passwd</span>
+      <span class="quiz-opt" onclick="answer(this,true)">b) /etc/shadow</span>
+      <span class="quiz-opt" onclick="answer(this,false)">c) /etc/group</span>
+      <span class="quiz-opt" onclick="answer(this,false)">d) /etc/security/passwd</span>
+    </div>
+  </div>
+
+  <div class="quiz-item">
+    <div class="quiz-q">3. What does sudo visudo do that makes it safer than editing sudoers directly?</div>
+    <div class="quiz-opts">
+      <span class="quiz-opt" onclick="answer(this,false)">a) It encrypts the sudoers file</span>
+      <span class="quiz-opt" onclick="answer(this,false)">b) It backs up the old sudoers first</span>
+      <span class="quiz-opt" onclick="answer(this,true)">c) It validates syntax before saving — prevents lockout</span>
+      <span class="quiz-opt" onclick="answer(this,false)">d) It runs sudo as root automatically</span>
+    </div>
+  </div>
+
+  <div class="quiz-item">
+    <div class="quiz-q">4. Command to delete a user AND their home directory?</div>
+    <div class="quiz-opts">
+      <span class="quiz-opt" onclick="answer(this,false)">a) sudo userdel username</span>
+      <span class="quiz-opt" onclick="answer(this,true)">b) sudo userdel -r username</span>
+      <span class="quiz-opt" onclick="answer(this,false)">c) sudo usermod -d /dev/null username</span>
+      <span class="quiz-opt" onclick="answer(this,false)">d) sudo deluser --remove-all username</span>
+    </div>
+  </div>
+
+  <div class="answer-key">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:8px;">&#10003; Answer Key</h3>
+    <p class="handwritten">"Golu, check karo: 1-b | 2-b | 3-c | 4-b"</p>
+  </div>
+</section>
+
+<!-- CLOSING CARDS -->
+<section>
+  <div class="step-badge">&#9320; Closing</div>
+  <div class="topic-title">&#127891; Lesson Wrap-up</div>
+  <div class="closing-grid">
+    <div class="cc takeaway">
+      <div class="icon">&#128161;</div>
+      <div class="title">Takeaway</div>
+      <div class="body">Every user gets minimum required access. Groups simplify management at scale — one group rule affects 100 users instantly. Principle of Least Privilege = production security foundation.</div>
+    </div>
+    <div class="cc interview">
+      <div class="icon">&#127919;</div>
+      <div class="title">Interview Question</div>
+      <div class="body">How do you audit which users have sudo access on a Linux system? Answer: <code style="font-family:'Fira Code';font-size:.78rem">grep -r 'ALL' /etc/sudoers /etc/sudoers.d/</code> and <code style="font-family:'Fira Code';font-size:.78rem">getent group sudo wheel</code></div>
+    </div>
+    <div class="cc assign">
+      <div class="icon">&#128221;</div>
+      <div class="title">Assignment</div>
+      <div class="body">Create users tokyo, berlin, professor. Create groups developers, admins. Assign: tokyo→developers, berlin→developers+admins, professor→admins. Create /opt/dev-project with group write (775). Test by creating file as tokyo.</div>
+    </div>
+    <div class="cc challenge">
+      <div class="icon">&#128293;</div>
+      <div class="title">Challenge</div>
+      <div class="body">Configure sudo so that 'tokyo' can ONLY run docker commands without a password. No other sudo access. Hint: <code style="font-family:'Fira Code';font-size:.78rem">visudo</code> + NOPASSWD + full path to docker binary.</div>
+    </div>
+    <div class="cc mistake">
+      <div class="icon">&#9888;</div>
+      <div class="title">Critical Mistake to Avoid</div>
+      <div class="body">NEVER use <code style="font-family:'Fira Code';font-size:.78rem">usermod -G</code> alone — it REPLACES all supplementary groups! A developer who had docker and sudo access will lose both. Always use <code style="font-family:'Fira Code';font-size:.78rem">-aG</code> to append!</div>
+    </div>
+    <div class="cc protip">
+      <div class="icon">&#128640;</div>
+      <div class="title">Pro Tip</div>
+      <div class="body">In production at scale, use LDAP/Active Directory + sudo rules for centralized user management. Local users are a "security debt" — they don't get disabled when someone leaves the company. SSO + Just-In-Time access is the DevOps standard.</div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /tab-lesson -->
+
+<!-- ══════════════ TAB 2 — CHEAT SHEET ══════════════ -->
+<div class="tab-pane" id="tab-cheatsheet">
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+      <span class="char-name">Jagu</span>
+    </div>
+    <div class="speech-bubble" style="border-color:var(--chalk-blue)">"Golu, print karke terminal ke paas chipka lo! <span class="chalk-text">Ye sab commands roz kaam aayenge.</span>"</div>
+  </div>
+
+  <div class="cs-title">User Management Commands</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Description</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>useradd -m -s /bin/bash user</td><td>Create user with home dir + bash</td><td>sudo useradd -m -s /bin/bash tokyo</td></tr>
+      <tr><td>useradd -m -u UID -c "Name" user</td><td>Create with specific UID + comment</td><td>sudo useradd -m -u 1501 -c "Tokyo Dev" tokyo</td></tr>
+      <tr><td>passwd username</td><td>Set user password (root: any user)</td><td>sudo passwd tokyo</td></tr>
+      <tr><td>passwd -e username</td><td>Expire password — force change on login</td><td>sudo passwd -e berlin</td></tr>
+      <tr><td>usermod -aG group user</td><td>Add to group (APPEND — keeps existing)</td><td>sudo usermod -aG developers tokyo</td></tr>
+      <tr><td>usermod -s /sbin/nologin user</td><td>Disable interactive login for service acct</td><td>sudo usermod -s /sbin/nologin www-data</td></tr>
+      <tr><td>usermod -L username</td><td>Lock account (add ! to shadow hash)</td><td>sudo usermod -L tokyo</td></tr>
+      <tr><td>usermod -U username</td><td>Unlock account</td><td>sudo usermod -U tokyo</td></tr>
+      <tr><td>userdel username</td><td>Delete user (keep home dir)</td><td>sudo userdel berlin</td></tr>
+      <tr><td>userdel -r username</td><td>Delete user AND home + mail spool</td><td>sudo userdel -r berlin</td></tr>
+      <tr><td>chage -M 90 username</td><td>Set password max age (days)</td><td>sudo chage -M 90 tokyo</td></tr>
+      <tr><td>chage -l username</td><td>List password aging info</td><td>sudo chage -l tokyo</td></tr>
+      <tr><td>id username</td><td>Show UID, GID, all groups</td><td>id tokyo</td></tr>
+      <tr><td>groups username</td><td>List all groups for user</td><td>groups tokyo</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Group Management Commands</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Description</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>groupadd groupname</td><td>Create new group</td><td>sudo groupadd developers</td></tr>
+      <tr><td>groupadd -g GID groupname</td><td>Create group with specific GID</td><td>sudo groupadd -g 1500 dbadmins</td></tr>
+      <tr><td>gpasswd -a user group</td><td>Add user to group</td><td>sudo gpasswd -a tokyo developers</td></tr>
+      <tr><td>gpasswd -d user group</td><td>Remove user from group</td><td>sudo gpasswd -d tokyo developers</td></tr>
+      <tr><td>gpasswd -A user group</td><td>Set group administrator</td><td>sudo gpasswd -A tokyo developers</td></tr>
+      <tr><td>groupmod -n newname grp</td><td>Rename group</td><td>sudo groupmod -n devteam developers</td></tr>
+      <tr><td>groupdel groupname</td><td>Delete group (remove members first)</td><td>sudo groupdel oldgroup</td></tr>
+      <tr><td>getent group groupname</td><td>Show group info from any source (local/LDAP)</td><td>getent group developers</td></tr>
+      <tr><td>getent passwd username</td><td>Show user info from any source</td><td>getent passwd tokyo</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Password and Sudo Commands</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Description</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>passwd</td><td>Change your own password</td><td>No sudo needed</td></tr>
+      <tr><td>sudo passwd username</td><td>Root sets another user's password</td><td>Bypasses complexity checks</td></tr>
+      <tr><td>su username</td><td>Switch user (partial env)</td><td>Needs target user's password</td></tr>
+      <tr><td>su -</td><td>Switch to root with full login shell</td><td>Loads root's .bashrc, PATH</td></tr>
+      <tr><td>sudo command</td><td>Run command as root</td><td>Uses YOUR password, logged</td></tr>
+      <tr><td>sudo -u user command</td><td>Run as specific user</td><td>sudo -u www-data ls /var/www</td></tr>
+      <tr><td>sudo -i</td><td>Open root interactive shell</td><td>Preferred over sudo su -</td></tr>
+      <tr><td>sudo visudo</td><td>Safely edit /etc/sudoers</td><td>ALWAYS use this — validates syntax!</td></tr>
+      <tr><td>sudo -l</td><td>List your sudo permissions</td><td>What can I run as sudo?</td></tr>
+      <tr><td>sudo -l -U username</td><td>List another user's sudo perms</td><td>Audit tool</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Config File Formats</div>
+  <table class="cmd-table">
+    <thead><tr><th>File</th><th>Format / Fields</th><th>Permissions</th></tr></thead>
+    <tbody>
+      <tr><td>/etc/passwd</td><td>username:x:UID:GID:comment:home:shell</td><td>644 (world-readable)</td></tr>
+      <tr><td>/etc/shadow</td><td>username:$algo$hash:lastchange:min:max:warn:inactive:expire:</td><td>640 (root:shadow only)</td></tr>
+      <tr><td>/etc/group</td><td>groupname:x:GID:member1,member2,...</td><td>644 (world-readable)</td></tr>
+      <tr><td>/etc/sudoers</td><td>user HOST=(run_as) commands</td><td>440 (root:root, read-only)</td></tr>
+      <tr><td>/etc/sudoers.d/*</td><td>Drop-in sudo rules (preferred)</td><td>440 each file</td></tr>
+      <tr><td>/etc/gshadow</td><td>group:hash:admins:members (group passwords)</td><td>640 (root:shadow)</td></tr>
+    </tbody>
+  </table>
+
+</div><!-- /tab-cheatsheet -->
+
+<!-- ══════════════ TAB 3 — LAB ══════════════ -->
+<div class="tab-pane" id="tab-lab">
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"Jagu, ab main khud karta hoon — <span class="chalk-text">production-grade user setup!</span>"</div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:8px;">Lab Goal</h3>
+    <p style="font-size:.9rem;color:rgba(255,255,255,.68);">Onboard three users (tokyo, berlin, professor) into two groups (developers, admins), create a shared project directory with correct group permissions, and verify that the principle of least privilege is working correctly.</p>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">1</div><div class="lab-title">Create users tokyo, berlin, professor with passwords</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cmd">sudo useradd</span> <span class="flg">-m -s</span> /bin/bash <span class="flg">-c</span> <span class="str">"Tokyo Dev"</span> tokyo
+<span class="cmd">sudo useradd</span> <span class="flg">-m -s</span> /bin/bash <span class="flg">-c</span> <span class="str">"Berlin Dev"</span> berlin
+<span class="cmd">sudo useradd</span> <span class="flg">-m -s</span> /bin/bash <span class="flg">-c</span> <span class="str">"Professor"</span> professor
+<span class="cmd">sudo passwd</span> tokyo        <span class="cm"># set password: Tokyo@2026!</span>
+<span class="cmd">sudo passwd</span> berlin       <span class="cm"># set password: Berlin@2026!</span>
+<span class="cmd">sudo passwd</span> professor    <span class="cm"># set password: Prof@2026!</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; Run <code style="font-family:'Fira Code'">getent passwd tokyo berlin professor</code> — all three users should appear in output.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">2</div><div class="lab-title">Create groups: developers and admins</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cmd">sudo groupadd</span> developers
+<span class="cmd">sudo groupadd</span> admins
+
+<span class="cm"># Verify groups exist</span>
+<span class="cmd">getent group</span> developers admins</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; Both <code style="font-family:'Fira Code'">developers:x:NNNN:</code> and <code style="font-family:'Fira Code'">admins:x:NNNN:</code> should appear in output.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">3</div><div class="lab-title">Assign users: tokyo→developers, berlin→developers+admins, professor→admins</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># tokyo: developers only</span>
+<span class="cmd">sudo usermod</span> <span class="flg">-aG</span> developers tokyo
+
+<span class="cm"># berlin: both developers and admins</span>
+<span class="cmd">sudo usermod</span> <span class="flg">-aG</span> developers,admins berlin
+
+<span class="cm"># professor: admins only</span>
+<span class="cmd">sudo usermod</span> <span class="flg">-aG</span> admins professor</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; Use <code style="font-family:'Fira Code'">-aG</code> (not -G alone) to preserve primary group membership.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">4</div><div class="lab-title">Verify memberships with getent, id, and groups</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Check each user</span>
+<span class="cmd">id</span> tokyo       <span class="cm"># should show: groups=...,1002(developers)</span>
+<span class="cmd">id</span> berlin      <span class="cm"># should show: groups=...,1002(developers),1003(admins)</span>
+<span class="cmd">id</span> professor   <span class="cm"># should show: groups=...,1003(admins)</span>
+
+<span class="cm"># Check groups side</span>
+<span class="cmd">getent group</span> developers   <span class="cm"># developers:x:NNNN:tokyo,berlin</span>
+<span class="cmd">getent group</span> admins       <span class="cm"># admins:x:NNNN:berlin,professor</span>
+
+<span class="cm"># Simple group list per user</span>
+<span class="cmd">groups</span> tokyo berlin professor</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; tokyo in developers only. berlin in both. professor in admins only.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">5</div><div class="lab-title">Create /opt/dev-project with group ownership (developers) and 775 permissions</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Create shared project directory</span>
+<span class="cmd">sudo mkdir</span> <span class="flg">-p</span> /opt/dev-project
+
+<span class="cm"># Set group ownership</span>
+<span class="cmd">sudo chown</span> root:developers /opt/dev-project
+
+<span class="cm"># rwxrwxr-x — owner: root rwx, group: developers rwx, others: rx</span>
+<span class="cmd">sudo chmod</span> 775 /opt/dev-project
+
+<span class="cm"># Verify</span>
+<span class="cmd">ls</span> <span class="flg">-ld</span> /opt/dev-project
+<span class="cm"># drwxrwxr-x 2 root developers 4096 ...</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; <code style="font-family:'Fira Code'">ls -ld /opt/dev-project</code> should show <code style="font-family:'Fira Code'">drwxrwxr-x ... root developers</code></div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">6</div><div class="lab-title">Test by creating a file as tokyo user (verify group write access)</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Switch to tokyo (need to re-login for group membership to activate)</span>
+<span class="cmd">su -</span> tokyo
+
+<span class="cm"># Test write access to the shared directory</span>
+<span class="cmd">touch</span> /opt/dev-project/hello-from-tokyo.txt
+<span class="cmd">echo</span> <span class="str">"Tokyo was here"</span> &gt; /opt/dev-project/tokyo-notes.txt
+<span class="cmd">ls</span> <span class="flg">-la</span> /opt/dev-project/
+
+<span class="cm"># Also verify professor CANNOT write (not in developers)</span>
+<span class="cmd">exit</span>
+<span class="cmd">su -</span> professor
+<span class="cmd">touch</span> /opt/dev-project/test.txt   <span class="cm"># should show: Permission denied</span>
+<span class="cmd">exit</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; tokyo can create files. professor gets "Permission denied". Least privilege working!</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">7</div><div class="lab-title">Document all commands in a notes file</div><input type="checkbox" class="lab-chk" onchange="updateLab()"></div>
+    <pre><code><span class="cm"># Create your documentation as the tokyo user</span>
+<span class="cmd">su -</span> tokyo
+
+<span class="cmd">cat</span> &gt; /opt/dev-project/lab-notes.txt &lt;&lt;EOF
+# Lab Day 07 — User &amp; Group Management
+# Date: $(date)
+# Done by: tokyo
+
+## Users Created
+- tokyo (developers group)
+- berlin (developers + admins groups)
+- professor (admins group)
+
+## Groups Created
+- developers (GID: $(getent group developers | cut -d: -f3))
+- admins (GID: $(getent group admins | cut -d: -f3))
+
+## Shared Directory
+- /opt/dev-project — owner: root:developers — perms: 775
+
+## Verified
+- tokyo: can write to /opt/dev-project
+- professor: cannot write to /opt/dev-project (least privilege!)
+EOF
+
+<span class="cmd">cat</span> /opt/dev-project/lab-notes.txt
+<span class="cmd">exit</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; Notes file exists in /opt/dev-project/ and is readable by all developers group members.</div>
+  </div>
+
+  <div class="lab-prog-wrap">
+    <div style="font-size:1.4rem">&#127942;</div>
+    <div style="flex:1;">
+      <div style="font-family:'Architects Daughter';font-size:1.05rem;margin-bottom:6px">Lab Progress</div>
+      <div class="lab-bar"><div class="lab-fill" id="lab-fill"></div></div>
+    </div>
+    <div style="font-family:'Fira Code';font-size:.83rem;color:rgba(255,255,255,.45)" id="lab-count">0 / 7</div>
+  </div>
+
+</div><!-- /tab-lab -->
+
+<!-- FOOTER -->
+<div class="footer">
+  <p>#LearnDevOps · M01 · U01 · Day 07 — User &amp; Group Management · By Aryashree Pritikrishna</p>
+  <a href="https://github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap">github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap</a>
+</div>
+
+<!-- LESSON NAVIGATION -->
+<div class="lesson-nav">
+  <div class="nav-inner">
+    <a href="../day-06/L05-boot-and-init.html" class="nav-btn prev">&larr; Day 6 &mdash; Boot &amp; Init</a>
+    <a href="../../index.html" class="nav-btn up">&#8593; Curriculum</a>
+    <a href="../day-10/L09-ssh-and-remote-access.html" class="nav-btn next">Day 10 &mdash; SSH &amp; Remote Access &rarr;</a>
+  </div>
+</div>
+
+</div><!-- /blackboard -->
+
+<script>
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+  function copyCode(btn) {
+    const pre  = btn.closest('pre');
+    const text = (pre.querySelector('code') || pre).innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Done!';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 2000);
+    });
+  }
+  function toggleIQ(el) { el.classList.toggle('open'); }
+  function answer(el, correct) {
+    el.closest('.quiz-opts').querySelectorAll('.quiz-opt').forEach(o => {
+      o.style.pointerEvents = 'none';
+      if (o.getAttribute('onclick').includes('true')) o.classList.add('correct');
+    });
+    if (!correct) el.classList.add('wrong');
+  }
+  function updateLab() {
+    const boxes = document.querySelectorAll('#tab-lab .lab-chk');
+    const done  = Array.from(boxes).filter(b => b.checked).length;
+    document.getElementById('lab-fill').style.width  = Math.round(done/boxes.length*100) + '%';
+    document.getElementById('lab-count').textContent = done + ' / ' + boxes.length;
+  }
+
+  // ─── Back to top ──────────────────────────────────────────────
+  (function() {
+    var btn = document.createElement('button');
+    btn.className = 'to-top';
+    btn.innerHTML = '&#8593;';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.onclick = function() { window.scrollTo({ top:0, behavior:'smooth' }); };
+    document.body.appendChild(btn);
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        window.requestAnimationFrame(function() {
+          btn.classList.toggle('visible', window.scrollY > 400);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+  })();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>M01 · U01 · Day 01 — Linux Foundation &amp; Architecture | Linux Internals</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg-blackboard: #0a0e14;
+    --chalk-white:  #f1f2f6;
+    --chalk-yellow: #feca57;
+    --chalk-blue:   #48dbfb;
+    --chalk-green:  #1dd1a1;
+    --chalk-pink:   #ff9ff3;
+    --chalk-orange: #ff9f43;
+    --chalk-red:    #ff6b6b;
+    --wood-frame:   #2f3542;
+    --surface:      rgba(255,255,255,0.04);
+  }
+  @media print {
+    body { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; background:var(--bg-blackboard)!important; }
+    .blackboard { border:none!important; box-shadow:none!important; width:100%!important; margin:0!important; padding:10px!important; }
+    section { page-break-inside:avoid; }
+    .tab-nav { display:none!important; }
+    .tab-pane { display:block!important; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg-blackboard); color:var(--chalk-white); font-family:'Inter',sans-serif; padding:20px; }
+  .blackboard { max-width:1000px; margin:0 auto; border:12px solid var(--wood-frame); padding:50px; box-shadow:0 30px 60px rgba(0,0,0,.8); background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px); background-size:30px 30px; }
+
+  /* AUTHOR HEADER */
+  .author-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--chalk-yellow); padding-bottom:20px; margin-bottom:40px; }
+  .author-info h2 { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:1.8rem; }
+  .author-info p  { font-family:'Architects Daughter'; color:var(--chalk-white); font-size:1.1rem; margin-top:5px; }
+  .author-contact { text-align:right; font-family:'Fira Code',monospace; font-size:.82rem; color:var(--chalk-blue); }
+  .author-contact a { color:var(--chalk-blue); text-decoration:none; }
+  .contact-item { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:4px; }
+
+  /* PAGE TITLE */
+  h1 { font-family:'Architects Daughter',cursive; font-size:3.2rem; text-align:center; color:var(--chalk-yellow); text-transform:uppercase; margin-bottom:5px; }
+  .subtitle { text-align:center; color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1.4rem; margin-bottom:16px; }
+  .meta-badges { display:flex; justify-content:center; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
+  .badge { font-family:'Fira Code',monospace; font-size:.78rem; padding:4px 12px; border-radius:20px; border:1px solid; }
+  .badge-mod { border-color:var(--chalk-yellow); color:var(--chalk-yellow); }
+  .badge-time { border-color:var(--chalk-blue); color:var(--chalk-blue); }
+  .badge-status { border-color:var(--chalk-green); color:var(--chalk-green); }
+
+  /* TABS */
+  .tab-nav { display:flex; gap:0; margin-bottom:40px; border:2px solid var(--wood-frame); border-radius:12px; overflow:hidden; }
+  .tab-btn { flex:1; padding:14px 20px; font-family:'Architects Daughter',cursive; font-size:1.1rem; background:transparent; color:var(--chalk-white); border:none; cursor:pointer; border-right:2px solid var(--wood-frame); transition:all .2s; }
+  .tab-btn:last-child { border-right:none; }
+  .tab-btn:hover { background:rgba(255,255,255,.06); }
+  .tab-btn.active { background:rgba(254,202,87,.1); color:var(--chalk-yellow); }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; }
+
+  /* SHARED */
+  h2, h3, .handwritten, .speech-bubble, .topic-title { font-family:'Architects Daughter',cursive; }
+  section { margin-bottom:70px; padding-bottom:40px; border-bottom:2px dashed rgba(255,255,255,.1); }
+  section:last-of-type { border-bottom:none; }
+  .topic-title { color:var(--chalk-pink); font-size:2rem; margin-bottom:28px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+  .content-box { background:var(--surface); padding:25px; border-radius:15px; border:2px solid transparent; margin-bottom:20px; }
+  ul { list-style:none; padding-left:0; }
+  li { margin-bottom:13px; padding-left:28px; position:relative; }
+  li::before { content:'→'; position:absolute; left:0; color:var(--chalk-blue); }
+
+  /* CHARACTERS */
+  .doodle-container { display:flex; align-items:center; gap:28px; margin:28px 0; }
+  .doodle-container.right { justify-content:flex-end; margin-top:14px; }
+  .doodle-wrapper { display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .char-name { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:.9rem; }
+  .golu { width:60px; height:100px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .golu-img { width:60px; height:100px; object-fit:cover; object-position:center 20%; border-radius:10px; border:2.5px solid var(--chalk-green); box-shadow:0 0 12px rgba(29,209,161,.2); }
+  .jagu { width:70px; height:110px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .jagu-img { width:70px; height:100px; object-fit:cover; object-position:center 15%; border-radius:10px; border:2.5px solid var(--chalk-blue); box-shadow:0 0 12px rgba(72,219,251,.2); }
+
+  .speech-bubble { border:2px solid var(--chalk-white); border-radius:25px; padding:18px 26px; position:relative; max-width:72%; font-family:'Architects Daughter',cursive; font-size:1.2rem; line-height:1.5; }
+  .speech-bubble::before { content:''; position:absolute; left:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-right:14px solid var(--chalk-white); }
+  .speech-bubble.flip::before { display:none; }
+  .speech-bubble.flip::after { content:''; position:absolute; right:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-left:14px solid var(--chalk-white); }
+  .chalk-text { color:var(--chalk-yellow); font-weight:bold; }
+
+  /* INTRO */
+  .intro-banner { border:4px solid var(--chalk-yellow); padding:28px; border-radius:20px; margin-bottom:36px; background:rgba(254,202,87,.05); }
+
+  /* STATS */
+  .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; text-align:center; margin:20px 0; }
+  .stat-val { font-family:'Architects Daughter'; font-size:2.6rem; }
+  .stat-lbl { font-family:'Architects Daughter'; color:var(--chalk-blue); margin-top:4px; font-size:.95rem; }
+
+  /* DIAGRAM */
+  .diagram-container { border:3px solid var(--chalk-white); border-radius:25px; padding:36px; text-align:center; background:rgba(0,0,0,.5); margin:28px 0; }
+  .boot-chain { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:5px; }
+  .boot-node { font-family:'Architects Daughter'; font-size:.9rem; padding:8px 13px; border-radius:10px; border:2px solid; white-space:nowrap; }
+  .boot-arr { color:var(--chalk-yellow); font-size:1.2rem; }
+
+  /* TOPIC FLOW */
+  .topic-flow { display:flex; flex-direction:column; }
+  .tf-row { display:flex; align-items:flex-start; gap:14px; }
+  .tf-spine { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+  .tf-dot { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:.85rem; font-weight:700; }
+  .tf-line { width:2px; min-height:20px; flex:1; margin:3px 0; background:rgba(255,255,255,.1); }
+  .tf-body { padding:2px 0 18px; flex:1; }
+  .tf-body h4 { font-family:'Architects Daughter'; font-size:1.1rem; margin-bottom:3px; }
+  .tf-body p  { font-size:.86rem; color:rgba(255,255,255,.55); line-height:1.5; }
+
+  /* VS */
+  .vs-row { display:flex; align-items:center; gap:14px; margin:20px 0; }
+  .vs-circle { width:52px; height:52px; border:3px solid var(--chalk-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:1.3rem; color:var(--chalk-orange); flex-shrink:0; }
+
+  /* STEP BADGE */
+  .step-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:20px; padding:4px 14px; font-family:'Fira Code',monospace; font-size:.76rem; color:var(--chalk-blue); margin-bottom:16px; }
+
+  /* MISTAKE */
+  .mistake-pair { margin-bottom:22px; }
+  .m-label { font-family:'Architects Daughter'; font-size:1rem; margin-bottom:7px; color:var(--chalk-orange); }
+  .m-block { border-radius:10px; padding:12px 16px; margin-top:5px; }
+  .m-wrong { background:rgba(255,107,107,.07); border:1px solid rgba(255,107,107,.3); }
+  .m-right { background:rgba(29,209,161,.07); border:1px solid rgba(29,209,161,.3); }
+  .m-block code { font-family:'Fira Code',monospace; font-size:.8rem; color:var(--chalk-white); display:block; white-space:pre-wrap; overflow-wrap:break-word; }
+
+  /* CODE */
+  pre { background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:18px 20px; overflow-x:auto; margin:12px 0; position:relative; }
+  pre code { font-family:'Fira Code',monospace; font-size:.8rem; line-height:1.7; color:var(--chalk-white); }
+  .copy-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.13); color:rgba(255,255,255,.45); padding:3px 10px; border-radius:6px; font-family:'Fira Code',monospace; font-size:.7rem; cursor:pointer; transition:all .15s; }
+  .copy-btn:hover { background:rgba(254,202,87,.2); color:var(--chalk-yellow); border-color:var(--chalk-yellow); }
+  .copy-btn.done { background:rgba(29,209,161,.2); color:var(--chalk-green); border-color:var(--chalk-green); }
+  .cm  { color:#546e7a; }
+  .cmd { color:var(--chalk-blue); }
+  .flg { color:var(--chalk-pink); }
+  .str { color:var(--chalk-green); }
+
+  /* INTERVIEW Q */
+  .iq { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .iq-q { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; cursor:pointer; }
+  .iq-q:hover { background:rgba(255,255,255,.03); }
+  .iq-num { width:28px; height:28px; border-radius:50%; background:rgba(72,219,251,.13); color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+  .iq-text { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; line-height:1.4; }
+  .iq-arr { color:rgba(255,255,255,.28); font-size:.9rem; transition:transform .2s; margin-top:4px; }
+  .iq.open .iq-arr { transform:rotate(180deg); }
+  .iq-a { display:none; padding:0 20px 16px 60px; font-size:.88rem; color:rgba(255,255,255,.62); line-height:1.65; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; margin-top:-1px; }
+  .iq.open .iq-a { display:block; }
+
+  /* QUIZ */
+  .quiz-item { margin-bottom:22px; padding-bottom:16px; border-bottom:1px dashed rgba(255,255,255,.06); }
+  .quiz-q { font-family:'Architects Daughter'; font-size:1.15rem; margin-bottom:10px; }
+  .quiz-opts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .quiz-opt { font-family:'Architects Daughter'; color:var(--chalk-blue); font-size:1rem; cursor:pointer; padding:7px 10px; border-radius:8px; border:1px solid rgba(72,219,251,.2); transition:all .15s; }
+  .quiz-opt:hover { background:rgba(72,219,251,.08); }
+  .quiz-opt.correct { background:rgba(29,209,161,.14); border-color:var(--chalk-green); color:var(--chalk-green); pointer-events:none; }
+  .quiz-opt.wrong   { background:rgba(255,107,107,.1); border-color:var(--chalk-red); color:var(--chalk-red); pointer-events:none; }
+  .answer-key { border:2px dashed var(--chalk-green); padding:18px 22px; border-radius:14px; margin-top:28px; background:rgba(29,209,161,.05); }
+
+  /* CLOSING CARDS */
+  .closing-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+  .cc { background:var(--surface); border:2px solid; border-radius:16px; padding:18px 20px; }
+  .cc .icon { font-size:1.5rem; margin-bottom:7px; }
+  .cc .title { font-family:'Architects Daughter'; font-size:1.05rem; margin-bottom:6px; }
+  .cc .body  { font-size:.86rem; color:rgba(255,255,255,.68); line-height:1.6; }
+  .cc.takeaway  { border-color:var(--chalk-yellow); }
+  .cc.interview { border-color:var(--chalk-blue); }
+  .cc.assign    { border-color:var(--chalk-green); }
+  .cc.challenge { border-color:var(--chalk-orange); }
+  .cc.mistake   { border-color:var(--chalk-red); }
+  .cc.protip    { border-color:var(--chalk-pink); }
+
+  /* CHEAT TABLE */
+  .cmd-table { width:100%; border-collapse:collapse; margin:14px 0; }
+  .cmd-table th { color:var(--chalk-yellow); border-bottom:2px solid var(--chalk-yellow); text-align:left; padding:10px 12px; font-family:'Architects Daughter'; font-size:1rem; }
+  .cmd-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.07); font-size:.81rem; vertical-align:top; }
+  .cmd-table td:first-child { font-family:'Fira Code',monospace; color:var(--chalk-blue); white-space:nowrap; }
+  .cmd-table td:last-child  { color:rgba(255,255,255,.58); }
+  .cs-title { font-family:'Architects Daughter'; color:var(--chalk-pink); font-size:1.5rem; margin:32px 0 8px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+
+  /* LAB */
+  .lab-step { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:20px 22px; margin-bottom:13px; }
+  .lab-hdr { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .lab-num { width:30px; height:30px; border-radius:50%; background:rgba(254,202,87,.13); color:var(--chalk-yellow); font-family:'Architects Daughter'; font-size:1.1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .lab-title { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; }
+  .lab-chk { width:18px; height:18px; accent-color:var(--chalk-green); cursor:pointer; }
+  .accept { background:rgba(29,209,161,.05); border:1px solid rgba(29,209,161,.28); border-radius:9px; padding:10px 14px; margin-top:9px; font-size:.83rem; color:var(--chalk-green); }
+  .lab-prog-wrap { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:16px 20px; display:flex; align-items:center; gap:14px; margin-top:10px; }
+  .lab-bar { flex:1; height:6px; background:rgba(255,255,255,.09); border-radius:3px; }
+  .lab-fill { height:100%; background:linear-gradient(90deg,var(--chalk-green),var(--chalk-blue)); border-radius:3px; width:0; transition:width .3s; }
+
+  /* FOOTER */
+  .footer { text-align:center; color:#555; margin-top:60px; font-family:'Architects Daughter'; border-top:1px solid rgba(255,255,255,.09); padding-top:20px; }
+  .footer a { color:var(--chalk-blue); text-decoration:none; font-family:'Fira Code'; font-size:.85rem; }
+
+  
+  /* LESSON NAVIGATION */
+  .lesson-nav { margin-top:40px; padding-top:20px; border-top:2px solid rgba(255,255,255,.09); }
+  .nav-inner { display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap; }
+  .nav-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:10px; font-family:'Architects Daughter',cursive; font-size:.92rem; text-decoration:none; transition:all .15s; border:1px solid rgba(255,255,255,.12); color:var(--chalk-white); background:var(--surface); white-space:nowrap; }
+  .nav-btn:hover { border-color:var(--chalk-yellow); color:var(--chalk-yellow); background:rgba(254,202,87,.06); transform:translateY(-1px); }
+  .nav-btn.up { border-color:rgba(72,219,251,.2); color:var(--chalk-blue); }
+  .nav-btn.up:hover { border-color:var(--chalk-blue); background:rgba(72,219,251,.06); }
+  .nav-btn.prev { border-color:rgba(255,255,255,.1); }
+  .nav-btn.next { border-color:rgba(255,255,255,.1); }
+  .nav-btn.disabled { opacity:.3; pointer-events:none; border-color:transparent; background:transparent; }
+  @media(max-width:680px) {
+    .nav-inner { flex-direction:column; align-items:stretch; }
+    .nav-btn { justify-content:center; }
+  }
+
+  /* BACK TO TOP floating button */
+  .to-top { position:fixed; bottom:30px; right:30px; width:48px; height:48px; border-radius:50%; background:var(--chalk-yellow); color:#0a0e14; border:none; cursor:pointer; font-size:1.3rem; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:all .25s ease; z-index:1000; box-shadow:0 4px 16px rgba(254,202,87,.25); }
+  .to-top.visible { opacity:1; visibility:visible; }
+  .to-top:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(254,202,87,.35); }
+  @media(max-width:680px) {
+    .to-top { bottom:16px; right:16px; width:42px; height:42px; font-size:1.1rem; }
+  }
+
+
+@media(max-width:680px) {
+    .blackboard { padding:22px 16px; }
+    h1 { font-size:2.1rem; }
+    .closing-grid,.stat-row { grid-template-columns:1fr; }
+    .author-header { flex-direction:column; gap:14px; }
+    .author-contact { text-align:left; }
+    .vs-row { flex-direction:column; }
+    .boot-chain { flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="blackboard">
+
+<!-- AUTHOR HEADER -->
+<header class="author-header">
+  <div class="author-info">
+    <h2>Aryashree Pritikrishna</h2>
+    <p>AI Powered DevOps &amp; Platform Engineering</p>
+  </div>
+  <div class="author-contact">
+    <div class="contact-item">&#128188; <a href="https://www.linkedin.com/in/aryashreepritikrishna/">linkedin.com/in/aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128250; <a href="https://www.youtube.com/@aryashreepritikrishna">youtube.com/@aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128231; <a href="mailto:aryashreep@gmail.com">aryashreep@gmail.com</a></div>
+  </div>
+</header>
+
+<!-- PAGE TITLE -->
+<header>
+  <h1>Linux Foundation &amp; Architecture</h1>
+  <p class="subtitle">M01 · U01 · Day 01 — Linux Internals</p>
+  <div class="meta-badges">
+    <span class="badge badge-mod">M01 · Linux Foundations</span>
+    <span class="badge badge-time">&#9201; 45 min</span>
+    <span class="badge badge-status">&#9679; Ready</span>
+  </div>
+</header>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('lesson',this)">&#128214; Lesson</button>
+  <button class="tab-btn" onclick="switchTab('cheatsheet',this)">&#128203; Cheat Sheet</button>
+  <button class="tab-btn" onclick="switchTab('lab',this)">&#129514; Lab</button>
+</div>
+
+<!-- ══════════════ TAB 1 — LESSON ══════════════ -->
+<div class="tab-pane active" id="tab-lesson">
+
+<!-- INTRO DIALOGUE -->
+<section>
+  <div class="intro-banner">
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"Jagu, be honest — <span class="chalk-text">is Linux actually better, or is it just cheaper?</span> Everyone says I need to learn it but what's actually <span class="chalk-text">inside?</span>"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"Golu, it's both. But more importantly — <span class="chalk-text">Linux is the only OS where you can look under the hood and fix things.</span> Windows shows you a blue screen. Linux shows you a log, a stack trace, and five ways to fix it before your coffee gets cold."</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="content-box" style="margin-top:20px;border-left:4px solid var(--chalk-yellow);">
+      <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:9px;">Learning Goal</h3>
+      <ul style="list-style:none;padding-left:0;">
+        <li style="margin-bottom:10px;padding-left:28px;position:relative;font-family:'Architects Daughter',cursive;font-size:1.05rem;line-height:1.5;"><span style="position:absolute;left:0;color:var(--chalk-green);">&#10003;</span> Understand who created Linux and why it rules the cloud</li>
+        <li style="margin-bottom:10px;padding-left:28px;position:relative;font-family:'Architects Daughter',cursive;font-size:1.05rem;line-height:1.5;"><span style="position:absolute;left:0;color:var(--chalk-green);">&#10003;</span> Master the layered architecture: hardware &#8594; kernel &#8594; libraries &#8594; shell &#8594; apps</li>
+        <li style="margin-bottom:10px;padding-left:28px;position:relative;font-family:'Architects Daughter',cursive;font-size:1.05rem;line-height:1.5;"><span style="position:absolute;left:0;color:var(--chalk-green);">&#10003;</span> Know <b>which layer</b> any production issue lives in — before you touch a single command</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Get a Terminal -->
+<section>
+  <div class="topic-title">&#128421; Before You Start — Get a Terminal</div>
+  <div class="content-box" style="border-left:5px solid var(--chalk-green);">
+    <p style="margin-bottom:16px;line-height:1.7;color:rgba(255,255,255,.75);">If you have never used Linux before, you need a terminal to follow along. Pick the option that fits your computer:</p>
+    <table class="cmd-table">
+      <thead><tr><th>Your Setup</th><th>What to Do</th></tr></thead>
+      <tbody>
+        <tr><td>Windows</td><td>Open PowerShell as Admin and run <code style="font-family:'Fira Code';color:var(--chalk-blue);">wsl --install</code>. Restart when prompted. Open the new "Ubuntu" app.</td></tr>
+        <tr><td>Mac</td><td>You already have a Unix terminal. Press <code style="font-family:'Fira Code';color:var(--chalk-blue);">Cmd + Space</code>, type Terminal, press Enter.</td></tr>
+        <tr><td>Chromebook</td><td>Go to Settings → Linux (Beta) → Turn on. A terminal window will appear.</td></tr>
+        <tr><td>No install?</td><td>Open <a href="https://bellard.org/jslinux/" style="color:var(--chalk-blue);">bellard.org/jslinux</a> in your browser. Click "Alpine Linux" — instant terminal, nothing to install.</td></tr>
+      </tbody>
+    </table>
+    <p class="handwritten" style="color:var(--chalk-red);margin-top:14px;font-size:1.05rem;">&#128161; <span class="chalk-text">One rule for today:</span> The <code style="font-family:'Fira Code';color:var(--chalk-yellow);">$</code> symbol is the <b>prompt</b> — it means "I'm ready for your next command." Type the command, press Enter.</p>
+  </div>
+</section>
+
+<!-- SECTION: Story -->
+<section>
+  <div class="step-badge">&#9312; Story · 2 min</div>
+  <div class="topic-title">&#128214; The Kernel Panic</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);">
+    <p class="handwritten" style="font-size:1.2rem;line-height:1.75;">
+      <b>Scene:</b> A startup's production server. 2:47 AM.
+    </p>
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"Jagu! The server is down! <span class="chalk-text">I restarted the app THREE TIMES.</span> Nothing! What do I do?!"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"(yawning) Golu... did you check if it's even an app problem, or a <span class="chalk-text">kernel</span> problem?"</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"What's the difference? The website is down!"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"That's like saying 'the car isn't moving' and pressing the accelerator harder. The engine might be dead, Golu. Not the gas pedal."</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble" style="max-width:65%;">"So <span class="chalk-text">type the command</span> already. Which one?"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">(types <code style="font-family:'Fira Code';color:var(--chalk-yellow);">dmesg | tail -20</code>) <br/><br/>"Found it. <span class="chalk-text">Something crashed at the kernel level.</span> No amount of app restarts would fix this. You just wasted 15 minutes."</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"...So I should have called you first?"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"No — learn the architecture. <span class="chalk-text">Then YOU become the person people call at 2 AM.</span>"</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <p style="margin-top:18px;border-top:1px solid rgba(255,255,255,.1);padding-top:18px;color:rgba(255,255,255,.65);line-height:1.7;">
+      <b>The lesson this story teaches:</b> Debug by the layer. Restarting the app when the kernel is broken is like rebooting your monitor because your computer froze.
+    </p>
+    <p style="margin-top:10px;color:rgba(255,255,255,.65);">
+      <b>The command that solved it:</b> <code style="font-family:'Fira Code';color:var(--chalk-yellow);">dmesg | tail -20</code> — reads the last 20 lines of the kernel's log. You will run this in the demo today.
+    </p>
+  </div>
+</section>
+
+<!-- SECTION: Why Linux -->
+<section>
+  <div class="step-badge">&#9313; Context · 3 min</div>
+  <div class="topic-title">&#127984; Why Linux?</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);">
+    <p style="margin-bottom:16px;line-height:1.7;font-size:1.1rem;" class="handwritten">"Is Linux actually better, or just cheaper?"</p>
+    <p style="margin-bottom:16px;line-height:1.7;color:rgba(255,255,255,.75);">
+      It is both. But the real reason: <b>Linux is the only OS where you can look under the hood and fix things.</b> Windows shows you a blue screen. Linux shows you a log, a stack trace, and five ways to fix it.
+    </p>
+    <div class="stat-row">
+      <div><div class="stat-val">96%</div><div class="stat-lbl">of the cloud</div></div>
+      <div><div class="stat-val">100%</div><div class="stat-lbl">of top 500 supercomputers</div></div>
+      <div><div class="stat-val">1 OS</div><div class="stat-lbl">runs the world's stock exchanges</div></div>
+    </div>
+    <p style="margin-top:16px;line-height:1.7;color:rgba(255,255,255,.75);">
+      In <b>1991</b>, a 21-year-old Finnish student named <b>Linus Torvalds</b> posted on a newsgroup: <em>"I'm doing a (free) operating system (just a hobby, won't be big and professional like GNU)..."</em>
+    </p>
+    <p style="margin-top:12px;line-height:1.7;color:rgba(255,255,255,.75);">
+      That "hobby" now runs the world. <b>The Linux Foundation</b> (founded in 2000) is the nonprofit that supports Linus and the thousands of engineers who maintain the kernel.
+    </p>
+    <div style="margin-top:18px;padding:14px 18px;background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.3);border-radius:10px;">
+      <p style="font-size:.9rem;color:var(--chalk-red);"><b>Quick distinction beginners always get wrong:</b></p>
+      <ul style="margin-top:8px;">
+        <li><b>Linux</b> = the kernel (the engine)</li>
+        <li><b>Ubuntu / Fedora / Debian</b> = a <em>distribution</em> — the full car built around that engine</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Real-world Problem -->
+<section>
+  <div class="step-badge">&#9314; Real-world Problem · 3 min</div>
+  <div class="topic-title">&#9888; What Breaks Without Architecture Knowledge?</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);">
+    <p style="margin-bottom:16px;line-height:1.6;color:rgba(255,255,255,.7);">Here are the disasters Golu discovered the hard way — and that you can avoid by learning the architecture.</p>
+
+    <div class="mistake-pair">
+      <div class="m-label" style="font-size:.9rem;">The Infinite Restart Loop</div>
+      <div class="m-block m-wrong">
+        <code>Six restarts of the app — server still down. A senior ran dmesg and found a kernel error in 10 seconds. You wasted 30 minutes because you didn't know which layer to check.</code>
+      </div>
+    </div>
+
+    <div class="mistake-pair">
+      <div class="m-label" style="font-size:.9rem;">The Mystery Error</div>
+      <div class="m-block m-wrong">
+        <code>A cryptic error message. One hour Googling. A senior glances and says "that's a kernel OOM kill — nothing to do with your code."</code>
+      </div>
+    </div>
+
+    <div class="mistake-pair">
+      <div class="m-label" style="font-size:.9rem;">The Works-On-My-Machine Trap</div>
+      <div class="m-block m-wrong">
+        <code>Code runs on your laptop (Ubuntu 22.04). Deploy to server (RHEL) — crashes. Same code. Different kernel underneath.</code>
+      </div>
+    </div>
+
+    <div class="mistake-pair">
+      <div class="m-label" style="font-size:.9rem;">The Slow App Trap</div>
+      <div class="m-block m-wrong">
+        <code>You rewrite queries, add indexes, optimise everything. Still slow. The real problem? The server was swapping to disk — a kernel resource issue, not your code.</code>
+      </div>
+    </div>
+
+    <p class="handwritten" style="margin-top:18px;font-size:1.1rem;color:var(--chalk-yellow);border-top:1px solid rgba(255,255,255,.1);padding-top:18px;">
+      &#128161; The one-line truth: <span class="chalk-text">"Every production problem lives in a layer. Know the layers, find the problem faster."</span>
+    </p>
+  </div>
+</section>
+
+<!-- SECTION: Visualization -->
+<section>
+  <div class="step-badge">&#9315; Visualization · 2 min</div>
+  <div class="topic-title">&#128065; The Onion Model — Your Mental Map</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);">
+    <p class="handwritten" style="font-size:1.1rem;margin-bottom:16px;">Draw this on a whiteboard. Better yet — draw it on a napkin. You'll need to recall it under pressure.</p>
+    <div class="diagram-container">
+      <pre style="background:transparent;border:none;text-align:left;margin:0;padding:0;overflow-x:auto;"><code>  ┌─────────────────────────────────────────────────────────┐
+  │         User Applications            │  ← Browsers, databases, your code
+  │     (This is where 'the website'     │     Crashes here = just that app
+  │          goes down')                 │
+  ├─────────────────────────────────────────────────────────┤
+  │      Shell (bash, zsh, sh)           │  ← Command interpreter
+  │    (Where you type your 'magic')     │     Translates your commands
+  ├─────────────────────────────────────────────────────────┤
+  │    System Libraries (glibc)          │  ← System call wrappers
+  │   (The middle-man that never gets    │     You don't touch this usually
+  │         credit but does all          │
+  │          the real work)              │
+  ├─────────────────────────────────────────────────────────┤
+  │       Linux Kernel                   │  ← Process mgmt, memory, FS, net
+  │  (The 'strict HOD' who approves      │     Crashes here = ☠ kernel panic
+  │       every single request)          │
+  ├─────────────────────────────────────────────────────────┤
+  │        Hardware                      │  ← CPU, RAM, Disk, Network
+  │    (The physical stuff that          │     It either works or it doesn't
+  │       costs real money)              │
+  └─────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+    <div style="margin-top:14px;padding:14px;background:rgba(255,255,255,.03);border-radius:10px;border-left:4px solid var(--chalk-blue);">
+      <p style="font-size:.9rem;color:rgba(255,255,255,.65);line-height:1.6;">
+        <b>What is glibc?</b> It stands for GNU C Library — the standard library every Linux application uses to talk to the kernel. You will not interact with it directly as a beginner. Think of it as plumbing: it is always there, doing essential work, and you only notice it when something goes wrong.
+      </p>
+    </div>
+    <div style="margin-top:18px;padding:16px;background:rgba(29,209,161,.05);border:1px solid rgba(29,209,161,.2);border-radius:10px;">
+      <p style="font-size:.9rem;color:var(--chalk-green);line-height:1.6;">
+        <b>How to read the onion model:</b> Every command travels: shell (bash) → system libraries → kernel → hardware. The answer comes back the same way in reverse. Each layer only talks to the one directly below it — never skipping.
+      </p>
+    </div>
+    <div class="doodle-container" style="margin-top:18px;">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"So the kernel is like that one manager who has to approve every single request, and if they rage-quit, the whole company shuts down?"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"...That's... actually a perfect analogy. I'm stealing that for my next talk."</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Theory -->
+<section>
+  <div class="step-badge">&#9316; Theory · 5 min</div>
+  <div class="topic-title">&#128218; Kernel Space vs User Space</div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);margin-bottom:28px;">
+    <h3 style="color:var(--chalk-blue);margin-bottom:14px;font-family:'Architects Daughter';">The Great Divide</h3>
+    <table class="cmd-table">
+      <thead><tr><th>Concept</th><th>Kernel Space</th><th>User Space</th></tr></thead>
+      <tbody>
+        <tr><td>Where</td><td>The kernel's private kingdom</td><td>Where all apps live</td></tr>
+        <tr><td>Memory</td><td>Protected — apps can't touch it</td><td>Per-process isolation</td></tr>
+        <tr><td>Hardware access</td><td>Direct — drivers run here</td><td>Only via system calls</td></tr>
+        <tr><td>Crash impact</td><td>☠ Kernel panic — entire system dies</td><td>⚡ Just that process dies</td></tr>
+        <tr><td>How to inspect</td><td><code style="font-family:'Fira Code';">dmesg</code>, <code style="font-family:'Fira Code';">/proc</code></td><td>app logs, <code style="font-family:'Fira Code';">strace</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);margin-bottom:28px;">
+    <h3 style="color:var(--chalk-green);margin-bottom:14px;font-family:'Architects Daughter';">&#128260; What Happens When You Type a Command?</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.6;">When you type <code style="font-family:'Fira Code';color:var(--chalk-yellow);">ls /tmp</code> and press Enter, it travels through every layer of the onion:</p>
+    <div class="diagram-container" style="text-align:left;padding:20px;">
+      <pre style="background:transparent;border:none;margin:0;padding:0;overflow-x:auto;"><code>  You (Terminal)            Shell (bash)             Linux Kernel         Hardware (Disk)
+       |                          |                        |                    |
+       |--- "ls /tmp" + Enter --->|                        |                    |
+       |                          |--- "Please run ls" --->|                    |
+       |                          |   (via system calls)   |                    |
+       |                          |                        |--- Read /tmp ----->|
+       |                          |                        |<--- Dir contents ---|
+       |                          |<--- Here are files ----|                    |
+       |<-- file1 file2 file3 ----|                        |                    |</code></pre>
+    </div>
+    <p style="margin-top:14px;color:rgba(255,255,255,.65);line-height:1.6;">
+      <b>The big idea:</b> Even the simplest command — <code style="font-family:'Fira Code';color:var(--chalk-yellow);">ls</code> — touches every layer. Your input travels from the shell → kernel → hardware and the answer flows back up. The kernel is involved in <em>every single thing</em> you do on Linux.
+    </p>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-orange);margin-bottom:28px;">
+    <h3 style="color:var(--chalk-orange);margin-bottom:14px;font-family:'Architects Daughter';">systemd — The Notorious PID 1</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.6;">
+      systemd is the <b>first process</b> the kernel starts after boot. PID 1. Every other process is its descendant. If PID 1 dies, the kernel panics.
+    </p>
+    <p style="margin-bottom:12px;color:rgba(255,255,255,.65);">
+      <em>Think of systemd as the airport control tower. If the tower goes silent, every plane (process) is in trouble.</em>
+    </p>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># PID 1 — the very first process</span>
+<span class="cmd">ps</span> <span class="flg">-p</span> 1                <span class="cm"># Shows 'systemd' with PID 1</span>
+
+<span class="cm"># All running processes — every one is a child of PID 1</span>
+<span class="cmd">ps aux</span> | <span class="cmd">head</span> <span class="flg">-20</span>
+
+<span class="cm"># Which version of systemd? (systemctl = service manager)</span>
+<span class="cmd">systemctl</span> <span class="flg">--version</span></code></pre>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);">
+    <h3 style="color:var(--chalk-pink);margin-bottom:14px;font-family:'Architects Daughter';">Shell — Your Interpreter (Not Your Terminal)</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.6;">
+      The shell is a <b>user space program</b> that reads your commands and translates them into system calls. The terminal is just the window. The shell is the brain.
+    </p>
+    <p style="margin-bottom:12px;color:rgba(255,255,255,.65);">
+      For now, use <b>bash</b>. It is the default on almost every Linux server in the world.
+    </p>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Which shell are you using?</span>
+<span class="cmd">echo</span> <span class="str">$SHELL</span>        <span class="cm"># → /bin/bash or /bin/zsh</span></code></pre>
+  </div>
+</section>
+
+<!-- SECTION: Live Demo -->
+<section>
+  <div class="step-badge">&#9317; Live Demo · 15 min</div>
+  <div class="topic-title">&#128187; Hands-On Commands</div>
+  <p class="handwritten" style="font-size:1.1rem;margin-bottom:20px;color:var(--chalk-yellow);">
+    Open your terminal. Run every command shown. Don't just watch — type. <b>Muscle memory matters more than theory.</b>
+  </p>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);margin-bottom:20px;">
+    <h3 style="color:var(--chalk-blue);font-family:'Architects Daughter';margin-bottom:12px;">Step 1 — Kernel Inspection</h3>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Kernel version — first thing to check on ANY Linux system</span>
+<span class="cmd">uname</span> <span class="flg">-r</span>                    <span class="cm"># → e.g. 6.1.0-21-amd64</span>
+<span class="cmd">uname</span> <span class="flg">-a</span>                    <span class="cm"># → full info: kernel + hostname + date + arch</span>
+
+<span class="cm"># Kernel ring buffer — messages logged since boot</span>
+<span class="cmd">dmesg</span> | <span class="cmd">tail</span> <span class="flg">-20</span>          <span class="cm"># Last 20 kernel messages</span></code></pre>
+    <div style="margin-top:12px;padding:10px 14px;background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.3);border-radius:8px;">
+      <p style="font-size:.8rem;color:var(--chalk-red);">
+        <b>Ubuntu 22.04+ / WSL2:</b> If you see <code style="font-family:'Fira Code';">dmesg: read kernel buffer failed: Operation not permitted</code>, run <code style="font-family:'Fira Code';color:var(--chalk-yellow);">sudo dmesg | tail -20</code> instead.
+      </p>
+    </div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);margin-bottom:20px;">
+    <h3 style="color:var(--chalk-green);font-family:'Architects Daughter';margin-bottom:12px;">Step 2 — Process Tree</h3>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># PID 1 — the very first process the kernel starts</span>
+<span class="cmd">ps</span> <span class="flg">-p</span> 1
+
+<span class="cm"># All processes running right now (first 20 lines)</span>
+<span class="cmd">ps aux</span> | <span class="cmd">head</span> <span class="flg">-20</span>
+
+<span class="cm"># Which shell are you using?</span>
+<span class="cmd">echo</span> <span class="str">$SHELL</span></code></pre>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-orange);margin-bottom:20px;">
+    <h3 style="color:var(--chalk-orange);font-family:'Architects Daughter';margin-bottom:12px;">Step 3 — /proc Virtual Filesystem</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.6;">
+      <code style="font-family:'Fira Code';">/proc</code> is not a real folder on your hard drive. It is a live window the kernel creates in memory, so you can read kernel data using ordinary commands like <code style="font-family:'Fira Code';color:var(--chalk-yellow);">cat</code>.
+    </p>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># List what's inside /proc (first 20 entries)</span>
+<span class="cmd">ls /proc</span> | <span class="cmd">head</span> <span class="flg">-20</span>
+
+<span class="cm"># CPU info: how many cores? what model?</span>
+<span class="cmd">cat /proc/cpuinfo</span> | <span class="cmd">head</span> <span class="flg">-20</span>
+
+<span class="cm"># RAM info: how much memory does this system have?</span>
+<span class="cmd">cat /proc/meminfo</span> | <span class="cmd">head</span> <span class="flg">-15</span>
+
+<span class="cm"># How long has the system been running? (in seconds)</span>
+<span class="cmd">cat /proc/uptime</span></code></pre>
+    <div style="margin-top:12px;padding:10px 14px;background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.3);border-radius:8px;">
+      <p style="font-size:.8rem;color:var(--chalk-red);">
+        <b>Warning:</b> <code style="font-family:'Fira Code';">/proc</code> looks like a folder, but it is NOT. Never try to delete anything inside it. Treat <code style="font-family:'Fira Code';">/proc</code> as read-only.
+      </p>
+    </div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);">
+    <h3 style="color:var(--chalk-pink);font-family:'Architects Daughter';margin-bottom:12px;">Step 4 — Walk the Onion from the Outside In</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.6;">Tie everything together. Run each command and notice which layer it belongs to:</p>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># ── Running applications (outermost layer) ───────────────────</span>
+<span class="cmd">ps aux</span> | <span class="cmd">head</span> <span class="flg">-10</span>
+
+<span class="cm"># ── Shell ──────────────────────────────────────────</span>
+<span class="cmd">echo</span> <span class="str">$SHELL</span>          <span class="cm"># → /bin/bash or /bin/zsh</span>
+
+<span class="cm"># ── Kernel: version and uptime ─────────────────────────</span>
+<span class="cmd">uname</span> <span class="flg">-r</span>             <span class="cm"># → e.g. 6.1.0-21-amd64</span>
+<span class="cmd">cat /proc/uptime</span>     <span class="cm"># → seconds since boot</span>
+
+<span class="cm"># ── Kernel: live system data via /proc ───────────────</span>
+<span class="cmd">cat /proc/meminfo</span> | <span class="cmd">head</span> <span class="flg">-5</span>   <span class="cm"># → how much RAM?</span>
+
+<span class="cm"># ── Kernel: hardware event log ─────────────────────</span>
+<span class="cmd">dmesg</span> | <span class="cmd">tail</span> <span class="flg">-20</span></code></pre>
+    <p class="handwritten" style="margin-top:14px;font-size:1.05rem;color:var(--chalk-yellow);">
+      Every single command crossed the user-space → kernel boundary. The kernel read from hardware memory, assembled the response, and handed it back to your shell. You can't do anything on Linux without the kernel getting involved.
+    </p>
+  </div>
+</section>
+
+<!-- SECTION: Common Mistakes -->
+<section>
+  <div class="step-badge">&#9318; Common Mistakes · 5 min</div>
+  <div class="topic-title">&#9888; Don't Do This!</div>
+
+  <div class="content-box">
+    <div class="mistake-pair">
+      <div class="m-label">Mistake #1 — The Infinite App Restart</div>
+      <div class="m-block m-wrong">
+        <code><span style="color:var(--chalk-red);">&#10007; WRONG:</span>  sudo systemctl restart myapp   # Restarting app when it's a kernel problem</code>
+        <code style="margin-top:6px;color:rgba(255,255,255,.5);"># Does nothing if the kernel is the issue!</code>
+      </div>
+      <div class="m-block m-right">
+        <code><span style="color:var(--chalk-green);">&#10003; RIGHT:</span>  dmesg | tail -20                # Check the kernel layer FIRST</code>
+        <code style="margin-top:4px;color:rgba(255,255,255,.5);"># Look for: error, panic, killed, oom, failed</code>
+      </div>
+    </div>
+
+    <div class="mistake-pair">
+      <div class="m-label">Mistake #2 — Shell vs Terminal Confusion</div>
+      <div class="m-block m-wrong">
+        <code><span style="color:var(--chalk-red);">&#10007; WRONG:</span>  "I use bash" (No, you use a terminal that runs bash)</code>
+      </div>
+      <div class="m-block m-right">
+        <code><span style="color:var(--chalk-green);">&#10003; RIGHT:</span>  echo $SHELL    # → /bin/bash  (this is the shell)</code>
+        <code style="margin-top:4px;color:rgba(255,255,255,.5);">          echo $TERM     # → xterm-256color (this is the terminal type)</code>
+      </div>
+    </div>
+
+    <div class="mistake-pair">
+      <div class="m-label">Mistake #3 — The Windows Reflex</div>
+      <div class="m-block m-wrong">
+        <code><span style="color:var(--chalk-red);">&#10007; WRONG:</span>  Looking for .exe files, right-clicking, using Windows paths</code>
+        <code style="margin-top:6px;color:rgba(255,255,255,.5);"># "Where do I download the installer?" "Why can't I find C:\Users?"</code>
+      </div>
+      <div class="m-block m-right">
+        <code><span style="color:var(--chalk-green);">&#10003; RIGHT:</span>  echo $HOME     # → /home/yourname  (not C:\Users)</code>
+        <code style="margin-top:4px;color:rgba(255,255,255,.5);"># Linux is case-sensitive: Desktop ≠ desktop</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-box" style="margin-top:20px;border-left:4px solid var(--chalk-yellow);">
+    <h3 style="font-family:'Architects Daughter';color:var(--chalk-yellow);margin-bottom:14px;">Three Windows Habits to Unlearn Today</h3>
+    <ul>
+      <li>Linux has no <code style="font-family:'Fira Code';color:var(--chalk-pink);">.exe</code> — software comes from a <b>package manager</b> (<code style="font-family:'Fira Code';color:var(--chalk-blue);">apt install</code>, <code style="font-family:'Fira Code';color:var(--chalk-blue);">yum install</code>)</li>
+      <li>Paths use <b>forward slashes</b> (<code style="font-family:'Fira Code';color:var(--chalk-blue);">/home/user</code>) not backslashes</li>
+      <li><b>Everything is case-sensitive</b> — <code style="font-family:'Fira Code';color:var(--chalk-yellow);">File.txt</code> and <code style="font-family:'Fira Code';color:var(--chalk-yellow);">file.txt</code> are two different files</li>
+    </ul>
+  </div>
+</section>
+
+<!-- SECTION: Interview Questions -->
+<section>
+  <div class="step-badge">&#9319; Interview Questions · 5 min</div>
+  <div class="topic-title">&#127908; Crack the Interview</div>
+
+  <div class="iq" onclick="this.classList.toggle('open')">
+    <div class="iq-q">
+      <div class="iq-num">1</div>
+      <div class="iq-text">What is the difference between Linux the kernel and a Linux distribution?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">
+      <strong style="color:var(--chalk-green);">Linux</strong> is the kernel — the core software that manages hardware, memory, and processes. A <strong style="color:var(--chalk-blue);">distribution</strong> (Ubuntu, Fedora, Debian, RHEL) is a complete operating system built <em>around</em> the kernel: it bundles the kernel with a package manager, desktop environment, and tools. When someone says "I use Linux," they mean a distribution. Every distribution shares the same Linux kernel underneath.
+    </div>
+  </div>
+
+  <div class="iq" onclick="this.classList.toggle('open')">
+    <div class="iq-q">
+      <div class="iq-num">2</div>
+      <div class="iq-text">What is the difference between kernel space and user space?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">
+      <strong style="color:var(--chalk-green);">Kernel space</strong> is protected memory where the Linux kernel runs with full hardware access. <strong style="color:var(--chalk-blue);">User space</strong> is where all processes run in isolated memory. User space accesses hardware via <strong style="color:var(--chalk-yellow);">system calls</strong> — a controlled gateway. A kernel space crash causes a kernel panic (entire system fails); a user space crash only kills that process.
+    </div>
+  </div>
+
+  <div class="iq" onclick="this.classList.toggle('open')">
+    <div class="iq-q">
+      <div class="iq-num">3</div>
+      <div class="iq-text">Why is systemd PID 1?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">
+      <strong style="color:var(--chalk-green);">systemd</strong> is the first process started by the kernel after boot — it always gets PID 1. Every other process is a descendant. If PID 1 dies, the kernel panics. systemd manages service lifecycle, dependencies, and shutdown signals.
+    </div>
+  </div>
+
+  <div class="iq" onclick="this.classList.toggle('open')">
+    <div class="iq-q">
+      <div class="iq-num">4</div>
+      <div class="iq-text">What is a system call? Give an example.</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">
+      A <strong style="color:var(--chalk-green);">system call</strong> is the mechanism user space programs use to request services from the kernel. Examples: <code style="font-family:'Fira Code';">open()</code> to open a file, <code style="font-family:'Fira Code';">fork()</code> to create a new process, <code style="font-family:'Fira Code';">read()</code> to read data. You do not call these directly as a beginner — your shell and programs handle them for you.
+    </div>
+  </div>
+
+  <div class="iq" onclick="this.classList.toggle('open')">
+    <div class="iq-q">
+      <div class="iq-num">5</div>
+      <div class="iq-text">What is the /proc filesystem?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">
+      <strong style="color:var(--chalk-green);">/proc</strong> is a virtual filesystem that does not exist on disk — it is created in memory by the kernel at runtime. It provides a live window into kernel state: CPU info, memory usage, per-process details. Tools like <code style="font-family:'Fira Code';">top</code>, <code style="font-family:'Fira Code';">ps</code>, and <code style="font-family:'Fira Code';">free</code> all read from /proc internally.
+    </div>
+  </div>
+
+  <!-- Quick Quiz -->
+  <div class="content-box" style="margin-top:30px;border-left:4px solid var(--chalk-yellow);">
+    <h3 style="font-family:'Architects Daughter';color:var(--chalk-yellow);margin-bottom:20px;">&#9889; Quick Concept Check</h3>
+    <div class="quiz-item">
+      <div class="quiz-q">Which command reads the kernel's own log to check for problems?</div>
+      <div class="quiz-opts">
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">systemctl status</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,true)">dmesg | tail -20</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">ps aux | head -20</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">cat /var/log/syslog</div>
+      </div>
+    </div>
+    <div class="quiz-item">
+      <div class="quiz-q">What happens if systemd (PID 1) crashes?</div>
+      <div class="quiz-opts">
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">Only system services stop</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">The kernel restarts it automatically</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,true)">Kernel panic — the entire system crashes</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">systemd restarts itself</div>
+      </div>
+    </div>
+    <div class="quiz-item">
+      <div class="quiz-q">True or False: /proc is a real filesystem stored on disk.</div>
+      <div class="quiz-opts">
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">True</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,true)">False — it is a virtual filesystem in memory</div>
+      </div>
+    </div>
+    <div class="answer-key">
+      <strong style="color:var(--chalk-green);font-family:'Architects Daughter';">Answer Key:</strong>
+      <p style="margin-top:8px;font-size:.88rem;color:rgba(255,255,255,.7);line-height:1.6;">
+        1. <b>dmesg</b> — reads the kernel ring buffer directly.<br/>
+        2. <b>Kernel panic</b> — PID 1 is the root of the process tree. If it dies, the kernel panics.<br/>
+        3. <b>False</b> — /proc is a virtual filesystem created in memory at boot.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Assignment -->
+<section>
+  <div class="step-badge">&#9320; Assignment · 10 min</div>
+  <div class="topic-title">&#128203; Linux Architecture Explorer</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-orange);">
+    <div class="doodle-container" style="margin-top:0;">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble" style="border-color:var(--chalk-orange);">"Do this and you'll know more about your Linux system than most 'senior' engineers!"</div>
+    </div>
+    <ol style="list-style:decimal;padding-left:24px;margin-top:16px;line-height:1.8;">
+      <li>Run <code style="font-family:'Fira Code';color:var(--chalk-yellow);">ps -p 1</code> — what is PID 1 called on your system?</li>
+      <li>Run <code style="font-family:'Fira Code';color:var(--chalk-yellow);">uname -a</code> — write down your full kernel version string.</li>
+      <li>Run <code style="font-family:'Fira Code';color:var(--chalk-yellow);">cat /proc/cpuinfo | head -20</code> — find <b>model name</b> and <b>cpu cores</b>.</li>
+      <li>Run <code style="font-family:'Fira Code';color:var(--chalk-yellow);">cat /proc/meminfo | head -5</code> — find <b>MemTotal</b>. Divide by 1024 twice to get GB.</li>
+      <li>Run <code style="font-family:'Fira Code';color:var(--chalk-yellow);">dmesg | tail -20</code> — do you see any <code style="font-family:'Fira Code';">error</code>, <code style="font-family:'Fira Code';">failed</code>, or <code style="font-family:'Fira Code';">warning</code>?</li>
+      <li>Run <code style="font-family:'Fira Code';color:var(--chalk-yellow);">echo $HOME</code> — what is your home directory path?</li>
+      <li><b>Draw the Linux onion model from memory:</b> Hardware → Kernel → Libraries → Shell → Applications. Next to each layer, write one command from today's demo.</li>
+    </ol>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Assignment starter commands</span>
+<span class="cmd">ps</span> <span class="flg">-p</span> 1
+<span class="cmd">uname</span> <span class="flg">-a</span>
+<span class="cmd">cat /proc/cpuinfo</span> | <span class="cmd">head</span> <span class="flg">-20</span>
+<span class="cmd">cat /proc/meminfo</span> | <span class="cmd">head</span> <span class="flg">-5</span>
+<span class="cmd">dmesg</span> | <span class="cmd">tail</span> <span class="flg">-20</span>
+<span class="cmd">echo</span> <span class="str">$HOME</span></code></pre>
+  </div>
+</section>
+
+<!-- CLOSING CARDS -->
+<section>
+  <div class="topic-title">&#127881; Day 01 Wrap-Up</div>
+  <div class="closing-grid">
+    <div class="cc takeaway">
+      <div class="icon">&#128161;</div>
+      <div class="title">Key Takeaway</div>
+      <div class="body">Linux is a layered system. Knowing which layer a problem is in cuts debug time from hours to minutes. Kernel issues ≠ app issues.</div>
+    </div>
+    <div class="cc interview">
+      <div class="icon">&#127908;</div>
+      <div class="title">Interview Question</div>
+      <div class="body">What is the difference between Linux the kernel and a Linux distribution?</div>
+    </div>
+    <div class="cc assign">
+      <div class="icon">&#128203;</div>
+      <div class="title">Assignment</div>
+      <div class="body">Draw the onion model from memory, explore /proc, run dmesg. 6 commands + 1 diagram.</div>
+    </div>
+    <div class="cc challenge">
+      <div class="icon">&#9889;</div>
+      <div class="title">Challenge</div>
+      <div class="body">Draw the onion model on paper. Walk a friend through what each layer does and which command lives in it.</div>
+    </div>
+    <div class="cc mistake">
+      <div class="icon">&#9888;</div>
+      <div class="title">Never Do This</div>
+      <div class="body">Don't carry Windows habits into Linux. Case sensitivity, forward slashes, and package managers are non-negotiable.</div>
+    </div>
+    <div class="cc protip">
+      <div class="icon">&#9889;</div>
+      <div class="title">Pro Tip</div>
+      <div class="body">In production incidents, start with <code style="font-family:'Fira Code';">dmesg</code> and <code style="font-family:'Fira Code';">/proc</code>. Kernel layer first, then app layer. Senior engineers know this instinctively.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Now in Tech Terms -->
+<section>
+  <div class="topic-title">&#129488; Now in Tech Terms</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);">
+    <p style="margin-bottom:16px;color:rgba(255,255,255,.7);line-height:1.6;">
+      <b>Mapping the onion model analogy to exact commands:</b>
+    </p>
+    <table class="cmd-table">
+      <thead><tr><th>Analogy</th><th>Tech Term</th><th>Command/Tool</th></tr></thead>
+      <tbody>
+        <tr><td>"The engine"</td><td>Kernel space</td><td><code style="font-family:'Fira Code';">uname -r</code>, <code style="font-family:'Fira Code';">dmesg</code>, <code style="font-family:'Fira Code';">/proc/cpuinfo</code></td></tr>
+        <tr><td>"The driver"</td><td>User space &amp; apps</td><td><code style="font-family:'Fira Code';">ps aux</code>, <code style="font-family:'Fira Code';">systemctl status</code>, app logs</td></tr>
+        <tr><td>"The bridge"</td><td>System calls</td><td><code style="font-family:'Fira Code';">strace</code> (Day 11)</td></tr>
+        <tr><td>"The control tower"</td><td>systemd (PID 1)</td><td><code style="font-family:'Fira Code';">ps -p 1</code>, <code style="font-family:'Fira Code';">systemctl</code> (Day 6), <code style="font-family:'Fira Code';">journalctl</code> (Day 6)</td></tr>
+        <tr><td>"The window"</td><td>/proc virtual filesystem</td><td><code style="font-family:'Fira Code';">cat /proc/cpuinfo</code>, <code style="font-family:'Fira Code';">/proc/meminfo</code>, <code style="font-family:'Fira Code';">/proc/uptime</code></td></tr>
+        <tr><td>"The steering wheel"</td><td>Shell (bash, zsh)</td><td><code style="font-family:'Fira Code';">echo $SHELL</code>, <code style="font-family:'Fira Code';">echo $TERM</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- SECTION: Where This Leads -->
+<section>
+  <div class="topic-title">&#128279; Where This Leads</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);">
+    <p style="margin-bottom:16px;color:rgba(255,255,255,.75);line-height:1.7;">
+      This lesson is the foundation for everything that follows. Here is what comes next:
+    </p>
+    <ul>
+      <li><b>Day 02 (Essential Commands):</b> Now that you understand the layers, every command you learn will make more sense. <code style="font-family:'Fira Code';">ps</code> reads from <code style="font-family:'Fira Code';">/proc</code>. Every command you type crosses the kernel boundary.</li>
+      <li><b>Day 06 (Boot &amp; Init):</b> The boot sequence — UEFI &#8594; GRUB &#8594; kernel &#8594; systemd — traces through the exact layers you drew today. You will watch the system build itself from hardware up.</li>
+      <li><b>Day 07 (Processes):</b> Process lifecycle, signals, and zombies are all kernel-managed. The onion model tells you <em>which layer</em> to look in when a process misbehaves.</li>
+      <li><b>Day 11 (Diagnosis &amp; Troubleshooting):</b> <code style="font-family:'Fira Code';">strace</code>, <code style="font-family:'Fira Code';">lsof</code>, <code style="font-family:'Fira Code';">ss</code> — the production debugging toolkit. All of them work by observing the user-space &#8594; kernel boundary you learned today. This is where the onion model becomes a real debugger's weapon.</li>
+    </ul>
+    <details style="margin-top:18px;background:rgba(255,255,255,.03);border-radius:10px;padding:12px 16px;">
+      <summary style="cursor:pointer;font-family:'Architects Daughter';color:var(--chalk-yellow);font-size:1.05rem;">Further down the road — how this connects to the rest of the course</summary>
+      <ul style="margin-top:12px;">
+        <li><b>Day 12 (Namespaces &amp; cgroups):</b> Containers are NOT VMs. They are Linux processes with kernel features (namespaces + cgroups) that create isolation. The architecture you learned today is directly what makes Docker possible.</li>
+        <li><b>M04 (Containers):</b> Docker images run as processes on the same kernel. The onion model explains why all containers on a host share the kernel — and why a kernel exploit breaks all of them.</li>
+        <li><b>M06 (Kubernetes):</b> Pods are groups of containers sharing a kernel namespace. The architecture you drew today is the foundation of the entire cloud-native ecosystem.</li>
+        <li><b>M05 (Infrastructure as Code):</b> Terraform provisions cloud resources that run on the Linux kernel. Knowing the layers helps you identify whether a provisioning failure is a kernel issue or a config issue.</li>
+        <li><b>M15-M16 (AI-Assisted Ops):</b> When AI agents diagnose production issues, they use the same mental model — kernel layer first (<code style="font-family:'Fira Code';">dmesg</code>, <code style="font-family:'Fira Code';">/proc</code>), then user space. The onion model becomes the AI's diagnostic framework.</li>
+      </ul>
+    </details>
+    <p style="margin-top:16px;font-family:'Architects Daughter';font-size:1.05rem;color:var(--chalk-yellow);border-top:1px solid rgba(255,255,255,.1);padding-top:16px;">
+      <em>"The onion model you drew today is the single most reusable mental model in this entire course."</em> — Jagu
+    </p>
+  </div>
+</section>
+
+</div><!-- /tab-lesson -->
+
+<!-- ══════════════ TAB 2 — CHEAT SHEET ══════════════ -->
+<div class="tab-pane" id="tab-cheatsheet">
+
+<section>
+  <div class="topic-title">&#128203; Day 01 Cheat Sheet</div>
+
+  <div class="cs-title">Kernel &amp; System Info</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>uname -r</td><td>Kernel version (e.g. 6.1.0-21-amd64)</td></tr>
+      <tr><td>uname -a</td><td>Full kernel info: version, hostname, date, architecture</td></tr>
+      <tr><td>dmesg | tail -20</td><td>Last 20 kernel ring buffer messages</td></tr>
+      <tr><td>cat /proc/cpuinfo</td><td>CPU model, cores, flags (read from kernel's live data)</td></tr>
+      <tr><td>cat /proc/meminfo</td><td>RAM details: total, free, available, buffers, cached</td></tr>
+      <tr><td>cat /proc/uptime</td><td>Seconds since system boot</td></tr>
+      <tr><td>ps -p 1</td><td>Show PID 1 (systemd — the first process after boot)</td></tr>
+      <tr><td>ps aux | head -20</td><td>All running processes (first 20 lines)</td></tr>
+      <tr><td>echo $SHELL</td><td>Which shell interpreter are you using?</td></tr>
+      <tr><td>echo $TERM</td><td>Terminal type (xterm-256color, dumb, etc.)</td></tr>
+      <tr><td>echo $HOME</td><td>Your home directory path</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Key Architecture Concepts</div>
+  <table class="cmd-table">
+    <thead><tr><th>Concept</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>Kernel Space</td><td>Protected memory where the kernel runs. Full hardware access. Crash = kernel panic.</td></tr>
+      <tr><td>User Space</td><td>Isolated memory where all apps/processes run. Crash = just that process.</td></tr>
+      <tr><td>System Calls</td><td>The mechanism user space uses to request kernel services (open, read, write, fork)</td></tr>
+      <tr><td>systemd (PID 1)</td><td>First process the kernel starts. Manages all other processes and services.</td></tr>
+      <tr><td>/proc</td><td>Virtual filesystem created in memory by the kernel. Live window into kernel state.</td></tr>
+      <tr><td>glibc</td><td>GNU C Library — the standard library apps use to talk to the kernel via system calls.</td></tr>
+      <tr><td>Shell</td><td>User-space program (bash, zsh) that reads commands and translates to system calls.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">The Onion Model (5 Layers)</div>
+  <table class="cmd-table">
+    <thead><tr><th>Layer</th><th>Description</th><th>Example Command</th></tr></thead>
+    <tbody>
+      <tr><td>Applications</td><td>Browsers, databases, your code</td><td>ps aux</td></tr>
+      <tr><td>Shell</td><td>Command interpreter</td><td>echo $SHELL</td></tr>
+      <tr><td>System Libraries</td><td>glibc — syscall wrappers</td><td>(used automatically)</td></tr>
+      <tr><td>Linux Kernel</td><td>Process mgmt, memory, FS, net, drivers</td><td>uname -r, dmesg</td></tr>
+      <tr><td>Hardware</td><td>CPU, RAM, Disk, Network</td><td>cat /proc/cpuinfo</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Linux vs Distribution</div>
+  <table class="cmd-table">
+    <thead><tr><th>Term</th><th>Meaning</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td>Linux</td><td>The kernel (the engine)</td><td>vmlinuz-* files in /boot/</td></tr>
+      <tr><td>Distribution</td><td>Full OS built around the kernel</td><td>Ubuntu, Fedora, Debian, RHEL</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Windows Habits to Unlearn</div>
+  <ul style="margin-top:8px;">
+    <li>No <code style="font-family:'Fira Code';">.exe</code> files — use package manager: <code style="font-family:'Fira Code';color:var(--chalk-blue);">apt install</code> or <code style="font-family:'Fira Code';color:var(--chalk-blue);">yum install</code></li>
+    <li>Forward slashes in paths: <code style="font-family:'Fira Code';color:var(--chalk-yellow);">/home/user</code> not <code style="font-family:'Fira Code';color:var(--chalk-red);">C:\Users</code></li>
+    <li>Case-sensitive: <code style="font-family:'Fira Code';">File.txt</code> and <code style="font-family:'Fira Code';">file.txt</code> are different files</li>
+  </ul>
+
+  <div class="cs-title">Quick Commands Reference</div>
+  <table class="cmd-table">
+    <thead><tr><th>Command</th><th>Shows</th></tr></thead>
+    <tbody>
+      <tr><td>uname -a</td><td>Full kernel info</td></tr>
+      <tr><td>df -h</td><td>Disk usage</td></tr>
+      <tr><td>free -h</td><td>Memory usage</td></tr>
+      <tr><td>uptime</td><td>Load average</td></tr>
+      <tr><td>dmesg | tail</td><td>Recent kernel messages</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</div><!-- /tab-cheatsheet -->
+
+<!-- ══════════════ TAB 3 — LAB ══════════════ -->
+<div class="tab-pane" id="tab-lab">
+
+<section>
+  <div class="topic-title">&#129514; Lab: Linux Architecture Exploration</div>
+  <div class="content-box" style="border-left:5px solid var(--chalk-green);margin-bottom:24px;">
+    <p class="handwritten" style="font-size:1.1rem;"><b>Goal:</b> Map the Linux architecture layers on a running system.</p>
+    <p style="margin-top:8px;color:rgba(255,255,255,.65);">Open your terminal and work through each challenge below. Check the boxes as you complete each step.</p>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">1</div>
+      <div class="lab-title">Kernel Identity</div>
+      <input type="checkbox" class="lab-chk" onchange="updateLabProgress()">
+    </div>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cmd">uname</span> <span class="flg">-a</span>              <span class="cm"># full kernel info</span>
+<span class="cmd">cat /proc/version</span>     <span class="cm"># kernel's own version string</span></code></pre>
+    <p style="color:rgba(255,255,255,.55);font-size:.85rem;margin-top:8px;">If available: <code style="font-family:'Fira Code';">ls /boot/</code> to see the actual kernel files (<code style="font-family:'Fira Code';">vmlinuz-*</code>, <code style="font-family:'Fira Code';">initrd.img-*</code>, <code style="font-family:'Fira Code';">config-*</code>).</p>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">2</div>
+      <div class="lab-title">Explore systemd (PID 1)</div>
+      <input type="checkbox" class="lab-chk" onchange="updateLabProgress()">
+    </div>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cmd">ps</span> <span class="flg">-p 1 -o pid,ppid,cmd</span>   <span class="cm"># PID 1 details</span>
+<span class="cmd">systemctl</span> <span class="flg">--version</span>        <span class="cm"># systemd version</span>
+<span class="cmd">systemctl list-units</span> <span class="flg">--type=service --state=running</span>  <span class="cm"># running services</span></code></pre>
+    <p style="color:rgba(255,255,255,.55);font-size:.85rem;margin-top:8px;">Write down the systemd version and the names of <b>5 services</b> from the list (e.g. <code style="font-family:'Fira Code';">systemd-journald</code>, <code style="font-family:'Fira Code';">sshd</code>, <code style="font-family:'Fira Code';">cron</code>).</p>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">3</div>
+      <div class="lab-title">Walk the Onion Model — Layer by Layer</div>
+      <input type="checkbox" class="lab-chk" onchange="updateLabProgress()">
+    </div>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Running applications (outermost layer)</span>
+<span class="cmd">ps aux</span> | <span class="cmd">head</span> <span class="flg">-10</span>
+
+<span class="cm"># Shell — the interpreter translating your commands</span>
+<span class="cmd">echo</span> <span class="str">$SHELL</span>
+
+<span class="cm"># Kernel — version and uptime</span>
+<span class="cmd">uname</span> <span class="flg">-r</span>
+<span class="cmd">cat /proc/uptime</span>
+
+<span class="cm"># Kernel live data via /proc — how much RAM?</span>
+<span class="cmd">cat /proc/meminfo</span> | <span class="cmd">head</span> <span class="flg">-5</span>
+
+<span class="cm"># Kernel hardware event log</span>
+<span class="cmd">dmesg</span> | <span class="cmd">tail</span> <span class="flg">-20</span></code></pre>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">4</div>
+      <div class="lab-title">User Space vs Kernel Space</div>
+      <input type="checkbox" class="lab-chk" onchange="updateLabProgress()">
+    </div>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># CPU info from /proc</span>
+<span class="cmd">cat /proc/cpuinfo</span> | <span class="cmd">head</span> <span class="flg">-20</span>
+<span class="cm"># Look for: model name, cpu cores</span>
+
+<span class="cm"># Memory from /proc</span>
+<span class="cmd">cat /proc/meminfo</span> | <span class="cmd">head</span> <span class="flg">-5</span>
+<span class="cm"># Look for: MemTotal (divide by 1024 twice to get GB)</span>
+
+<span class="cm"># Kernel's own log</span>
+<span class="cmd">dmesg</span> | <span class="cmd">tail</span> <span class="flg">-20</span></code></pre>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr">
+      <div class="lab-num">5</div>
+      <div class="lab-title">Architecture Diagram</div>
+      <input type="checkbox" class="lab-chk" onchange="updateLabProgress()">
+    </div>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;">Draw a text-based architecture diagram with these 5 layers (innermost to outermost):</p>
+    <div class="diagram-container" style="padding:16px;">
+      <pre style="background:transparent;border:none;margin:0;padding:0;text-align:left;font-size:.85rem;"><code>Applications  (nginx, sshd, your code)    ← User Space
+Shell  (bash, zsh)                        ← User Space
+System Libraries  (glibc)                 ← User Space
+    ↕ system calls (boundary)
+Kernel  (scheduler, memory mgmt, FS)       ← Kernel Space
+Hardware  (CPU, RAM, disk, NIC)           ← Physical Layer</code></pre>
+    </div>
+    <p style="color:rgba(255,255,255,.55);font-size:.85rem;margin-top:8px;">Next to each layer, write 1–2 real components and 1 command from today that belongs to that layer.</p>
+  </div>
+
+  <div class="lab-prog-wrap">
+    <span style="font-family:'Architects Daughter';font-size:.9rem;color:var(--chalk-blue);">Progress</span>
+    <div class="lab-bar"><div class="lab-fill" id="labFill"></div></div>
+    <span id="labCount" style="font-family:'Fira Code';font-size:.85rem;color:var(--chalk-yellow);">0/5</span>
+  </div>
+
+  <div class="accept" style="margin-top:20px;">
+    <b>&#10003; Proof of Work:</b> Save your findings as <code style="font-family:'Fira Code';color:var(--chalk-yellow);">linux-architecture-notes.md</code>:<ul style="margin-top:8px;">
+      <li>Your <code style="font-family:'Fira Code';">uname -a</code> output</li>
+      <li>systemd version + 5 running services</li>
+      <li>Layer-by-layer onion exploration output</li>
+      <li>Your text architecture diagram with labels</li>
+    </ul>
+  </div>
+</section>
+
+</div><!-- /tab-lab -->
+
+<!-- FOOTER -->
+<footer class="footer">
+  <p>M01 — Linux Internals &amp; Foundations &middot; <a href="#">&#8593; Back to top</a></p>
+</footer>
+
+<!-- LESSON NAVIGATION -->
+<div class="lesson-nav">
+  <div class="nav-inner">
+    <span class="nav-btn prev disabled">&larr; Previous</span>
+    <a href="../../index.html" class="nav-btn up">&#8593; Curriculum</a>
+    <a href="../day-02/L02-essential-commands.html" class="nav-btn next">Day 2 &mdash; Essential Commands &rarr;</a>
+  </div>
+</div>
+
+</div><!-- /blackboard -->
+
+<script>
+// ─── Tab switching ────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─── Copy button ──────────────────────────────────────────────────
+function copyCode(btn) {
+  var code = btn.parentElement.querySelector('code');
+  var text = code.textContent.replace(/^.+$/gm, function(line) {
+    return line.replace(/^\s*#[^]*$/gm, '').trim();
+  }).trim();
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = 'copied!';
+    btn.classList.add('done');
+    setTimeout(function() { btn.textContent = 'copy'; btn.classList.remove('done'); }, 1500);
+  }).catch(function() {
+    // Fallback for older browsers
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = 'copied!';
+    btn.classList.add('done');
+    setTimeout(function() { btn.textContent = 'copy'; btn.classList.remove('done'); }, 1500);
+  });
+}
+
+// ─── Quiz ─────────────────────────────────────────────────────────
+function quizAnswer(el, correct) {
+  if (correct) {
+    el.classList.add('correct');
+  } else {
+    el.classList.add('wrong');
+  }
+  // Disable all options in this group
+  var opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(function(o) { o.style.pointerEvents = 'none'; });
+}
+
+// ─── Lab progress ─────────────────────────────────────────────────
+function updateLabProgress() {
+  var checks = document.querySelectorAll('.lab-chk');
+  var done = 0;
+  checks.forEach(function(c) { if (c.checked) done++; });
+  document.getElementById('labCount').textContent = done + '/' + checks.length;
+  var pct = checks.length > 0 ? (done / checks.length * 100) : 0;
+  document.getElementById('labFill').style.width = pct + '%';
+}
+
+  // ─── Back to top ──────────────────────────────────────────────
+  (function() {
+    var btn = document.createElement('button');
+    btn.className = 'to-top';
+    btn.innerHTML = '&#8593;';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.onclick = function() { window.scrollTo({ top:0, behavior:'smooth' }); };
+    document.body.appendChild(btn);
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        window.requestAnimationFrame(function() {
+          btn.classList.toggle('visible', window.scrollY > 400);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+  })();
+
+</script>
+</body>
+</html>

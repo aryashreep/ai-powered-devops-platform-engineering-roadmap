@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 500" width="300" height="500">
+  <defs>
+    <linearGradient id="jaguBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#48dbfb;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#48dbfb;stop-opacity:0.05"/>
+    </linearGradient>
+    <linearGradient id="skin2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8c8b0"/>
+      <stop offset="100%" style="stop-color:#dbb8a0"/>
+    </linearGradient>
+    <linearGradient id="shirtGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#48dbfb"/>
+      <stop offset="100%" style="stop-color:#0abde3"/>
+    </linearGradient>
+    <linearGradient id="jacketGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d3436"/>
+      <stop offset="100%" style="stop-color:#1a1d1e"/>
+    </linearGradient>
+    <linearGradient id="hairGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#555"/>
+      <stop offset="100%" style="stop-color:#333"/>
+    </linearGradient>
+    <filter id="glassShine">
+      <feGaussianBlur stdDeviation="1" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="150" cy="180" r="130" fill="url(#jaguBg)" stroke="#48dbfb" stroke-width="2" stroke-dasharray="6,4"/>
+
+  <!-- Body / Jacket -->
+  <path d="M95,330 Q95,410 105,490 L195,490 Q205,410 205,330 Z" fill="url(#jacketGrad)" stroke="#1a1d1e" stroke-width="2"/>
+  <!-- Jacket lapels / open front -->
+  <path d="M150,290 L140,350 L150,360 L160,350 L150,290" fill="url(#shirtGrad)"/>
+  <!-- Collar left -->
+  <path d="M110,280 L140,300 L130,290 Z" fill="url(#shirtGrad)" stroke="#0abde3" stroke-width="1"/>
+  <!-- Collar right -->
+  <path d="M190,280 L160,300 L170,290 Z" fill="url(#shirtGrad)" stroke="#0abde3" stroke-width="1"/>
+  <!-- Shirt visible area -->
+  <rect x="130" y="310" width="40" height="60" rx="3" fill="url(#shirtGrad)" opacity="0.6"/>
+
+  <!-- Neck -->
+  <rect x="135" y="260" width="30" height="30" fill="url(#skin2)" stroke="#cba490" stroke-width="1"/>
+
+  <!-- Head -->
+  <ellipse cx="150" cy="210" rx="62" ry="72" fill="url(#skin2)" stroke="#cba490" stroke-width="1.5"/>
+
+  <!-- Hair - styled/neat -->
+  <path d="M88,190 Q88,145 105,125 Q125,108 150,105 Q175,105 195,125 Q212,145 212,190 Q212,165 205,145 Q195,128 178,118 Q165,112 150,112 Q130,112 118,120 Q102,130 95,148 Q88,168 88,190 Z" fill="url(#hairGrad2)"/>
+  <!-- Side part -->
+  <path d="M115,115 Q130,108 145,108 Q160,108 175,115" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="1.5"/>
+  <!-- Slicked back top -->
+  <path d="M105,140 Q125,115 150,112 Q175,110 195,135" fill="url(#hairGrad2)"/>
+
+  <!-- Glasses -->
+  <ellipse cx="125" cy="205" rx="18" ry="16" fill="rgba(72,219,251,0.08)" stroke="#48dbfb" stroke-width="2.5" filter="url(#glassShine)">
+    <animate attributeName="fill-opacity" values="0.08;0.04;0.08" dur="3s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="175" cy="205" rx="18" ry="16" fill="rgba(72,219,251,0.08)" stroke="#48dbfb" stroke-width="2.5" filter="url(#glassShine)">
+    <animate attributeName="fill-opacity" values="0.08;0.04;0.08" dur="3s" repeatCount="indefinite"/>
+  </ellipse>
+  <!-- Bridge -->
+  <path d="M143,202 Q150,198 157,202" fill="none" stroke="#48dbfb" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Temple arms -->
+  <line x1="107" y1="200" x2="88" y2="195" stroke="#48dbfb" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="193" y1="200" x2="212" y2="195" stroke="#48dbfb" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Left Eye (behind glass) -->
+  <ellipse cx="125" cy="205" rx="6" ry="8" fill="white"/>
+  <ellipse cx="125" cy="205" rx="3.5" ry="4.5" fill="#2d3436"/>
+  <ellipse cx="123" cy="203" rx="1.5" ry="2" fill="white"/>
+
+  <!-- Right Eye (behind glass) -->
+  <ellipse cx="175" cy="205" rx="6" ry="8" fill="white"/>
+  <ellipse cx="175" cy="205" rx="3.5" ry="4.5" fill="#2d3436"/>
+  <ellipse cx="173" cy="203" rx="1.5" ry="2" fill="white"/>
+
+  <!-- Eyebrows -->
+  <path d="M108,188 Q125,182 142,188" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M158,188 Q175,182 192,188" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Nose -->
+  <path d="M150,218 Q145,228 150,232 Q155,228 150,218" fill="#cba490" stroke="#bb9480" stroke-width="1"/>
+
+  <!-- Mouth - calm knowing smile -->
+  <path d="M135,242 Q150,252 165,242" fill="none" stroke="#2d3436" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Chin line -->
+  <path d="M140,260 Q150,268 160,260" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>
+
+  <!-- Cheeks -->
+  <ellipse cx="108" cy="228" rx="8" ry="5" fill="#ff9ff3" opacity="0.15"/>
+  <ellipse cx="192" cy="228" rx="8" ry="5" fill="#ff9ff3" opacity="0.15"/>
+
+  <!-- Ears -->
+  <ellipse cx="88" cy="205" rx="9" ry="13" fill="url(#skin2)" stroke="#cba490" stroke-width="1.5"/>
+  <ellipse cx="212" cy="205" rx="9" ry="13" fill="url(#skin2)" stroke="#cba490" stroke-width="1.5"/>
+
+  <!-- Small beard/goatee -->
+  <path d="M140,255 Q150,270 160,255" fill="none" stroke="rgba(85,85,85,0.3)" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Name label -->
+  <rect x="95" y="440" width="110" height="30" rx="15" fill="rgba(72,219,251,0.1)" stroke="#48dbfb" stroke-width="1.5"/>
+  <text x="150" y="460" font-family="'Architects Daughter','Comic Sans MS',cursive, sans-serif" font-size="20" font-weight="bold" fill="#48dbfb" text-anchor="middle">Jagu</text>
+
+  <!-- Subtitle -->
+  <text x="150" y="485" font-family="'Inter',sans-serif" font-size="11" fill="rgba(255,255,255,0.4)" text-anchor="middle">Senior DevOps</text>
+</svg>

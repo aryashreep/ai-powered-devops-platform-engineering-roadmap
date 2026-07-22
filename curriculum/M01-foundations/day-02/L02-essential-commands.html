@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>M01 · U01 · Day 02 — Essential Commands | Linux Internals</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg-blackboard: #0a0e14;
+    --chalk-white:  #f1f2f6;
+    --chalk-yellow: #feca57;
+    --chalk-blue:   #48dbfb;
+    --chalk-green:  #1dd1a1;
+    --chalk-pink:   #ff9ff3;
+    --chalk-orange: #ff9f43;
+    --chalk-red:    #ff6b6b;
+    --wood-frame:   #2f3542;
+    --surface:      rgba(255,255,255,0.04);
+  }
+  @media print {
+    body { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; background:var(--bg-blackboard)!important; }
+    .blackboard { border:none!important; box-shadow:none!important; width:100%!important; margin:0!important; padding:10px!important; }
+    section { page-break-inside:avoid; }
+    .tab-nav { display:none!important; }
+    .tab-pane { display:block!important; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg-blackboard); color:var(--chalk-white); font-family:'Inter',sans-serif; padding:20px; }
+  .blackboard { max-width:1000px; margin:0 auto; border:12px solid var(--wood-frame); padding:50px; box-shadow:0 30px 60px rgba(0,0,0,.8); background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px); background-size:30px 30px; }
+
+  /* AUTHOR HEADER */
+  .author-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--chalk-yellow); padding-bottom:20px; margin-bottom:40px; }
+  .author-info h2 { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:1.8rem; }
+  .author-info p  { font-family:'Architects Daughter'; color:var(--chalk-white); font-size:1.1rem; margin-top:5px; }
+  .author-contact { text-align:right; font-family:'Fira Code',monospace; font-size:.82rem; color:var(--chalk-blue); }
+  .author-contact a { color:var(--chalk-blue); text-decoration:none; }
+  .contact-item { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:4px; }
+
+  /* PAGE TITLE */
+  h1 { font-family:'Architects Daughter',cursive; font-size:3.2rem; text-align:center; color:var(--chalk-yellow); text-transform:uppercase; margin-bottom:5px; }
+  .subtitle { text-align:center; color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1.4rem; margin-bottom:16px; }
+  .meta-badges { display:flex; justify-content:center; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
+  .badge { font-family:'Fira Code',monospace; font-size:.78rem; padding:4px 12px; border-radius:20px; border:1px solid; }
+  .badge-mod { border-color:var(--chalk-yellow); color:var(--chalk-yellow); }
+  .badge-time { border-color:var(--chalk-blue); color:var(--chalk-blue); }
+  .badge-status { border-color:var(--chalk-green); color:var(--chalk-green); }
+
+  /* TABS */
+  .tab-nav { display:flex; gap:0; margin-bottom:40px; border:2px solid var(--wood-frame); border-radius:12px; overflow:hidden; }
+  .tab-btn { flex:1; padding:14px 20px; font-family:'Architects Daughter',cursive; font-size:1.1rem; background:transparent; color:var(--chalk-white); border:none; cursor:pointer; border-right:2px solid var(--wood-frame); transition:all .2s; }
+  .tab-btn:last-child { border-right:none; }
+  .tab-btn:hover { background:rgba(255,255,255,.06); }
+  .tab-btn.active { background:rgba(254,202,87,.1); color:var(--chalk-yellow); }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; }
+
+  /* SHARED */
+  h2, h3, .handwritten, .speech-bubble, .topic-title { font-family:'Architects Daughter',cursive; }
+  section { margin-bottom:70px; padding-bottom:40px; border-bottom:2px dashed rgba(255,255,255,.1); }
+  section:last-of-type { border-bottom:none; }
+  .topic-title { color:var(--chalk-pink); font-size:2rem; margin-bottom:28px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+  .content-box { background:var(--surface); padding:25px; border-radius:15px; border:2px solid transparent; margin-bottom:20px; }
+  ul { list-style:none; padding-left:0; }
+  li { margin-bottom:13px; padding-left:28px; position:relative; }
+  li::before { content:'→'; position:absolute; left:0; color:var(--chalk-blue); }
+
+  /* CHARACTERS */
+  .doodle-container { display:flex; align-items:center; gap:28px; margin:28px 0; }
+  .doodle-container.right { justify-content:flex-end; margin-top:14px; }
+  .doodle-wrapper { display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .char-name { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:.9rem; }  .golu { width:60px; height:100px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .golu-img { width:60px; height:100px; object-fit:cover; object-position:center 20%; border-radius:10px; border:2.5px solid var(--chalk-green); box-shadow:0 0 12px rgba(29,209,161,.2); }
+  .jagu { width:70px; height:110px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .jagu-img { width:70px; height:100px; object-fit:cover; object-position:center 15%; border-radius:10px; border:2.5px solid var(--chalk-blue); box-shadow:0 0 12px rgba(72,219,251,.2); }
+
+  .speech-bubble { border:2px solid var(--chalk-white); border-radius:25px; padding:18px 26px; position:relative; max-width:72%; font-family:'Architects Daughter',cursive; font-size:1.2rem; line-height:1.5; }
+  .speech-bubble::before { content:''; position:absolute; left:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-right:14px solid var(--chalk-white); }
+  .speech-bubble.flip::before { display:none; }
+  .speech-bubble.flip::after { content:''; position:absolute; right:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-left:14px solid var(--chalk-white); }
+  .chalk-text { color:var(--chalk-yellow); font-weight:bold; }
+
+  /* INTRO */
+  .intro-banner { border:4px solid var(--chalk-yellow); padding:28px; border-radius:20px; margin-bottom:36px; background:rgba(254,202,87,.05); }
+
+  /* STATS */
+  .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; text-align:center; margin:20px 0; }
+  .stat-val { font-family:'Architects Daughter'; font-size:2.6rem; }
+  .stat-lbl { font-family:'Architects Daughter'; color:var(--chalk-blue); margin-top:4px; font-size:.95rem; }
+
+  /* DIAGRAM */
+  .diagram-container { border:3px solid var(--chalk-white); border-radius:25px; padding:36px; text-align:center; background:rgba(0,0,0,.5); margin:28px 0; }
+  .boot-chain { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:5px; }
+  .boot-node { font-family:'Architects Daughter'; font-size:.9rem; padding:8px 13px; border-radius:10px; border:2px solid; white-space:nowrap; }
+  .boot-arr { color:var(--chalk-yellow); font-size:1.2rem; }
+
+  /* TOPIC FLOW */
+  .topic-flow { display:flex; flex-direction:column; }
+  .tf-row { display:flex; align-items:flex-start; gap:14px; }
+  .tf-spine { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+  .tf-dot { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:.85rem; font-weight:700; }
+  .tf-line { width:2px; min-height:20px; flex:1; margin:3px 0; background:rgba(255,255,255,.1); }
+  .tf-body { padding:2px 0 18px; flex:1; }
+  .tf-body h4 { font-family:'Architects Daughter'; font-size:1.1rem; margin-bottom:3px; }
+  .tf-body p  { font-size:.86rem; color:rgba(255,255,255,.55); line-height:1.5; }
+
+  /* VS */
+  .vs-row { display:flex; align-items:center; gap:14px; margin:20px 0; }
+  .vs-circle { width:52px; height:52px; border:3px solid var(--chalk-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:1.3rem; color:var(--chalk-orange); flex-shrink:0; }
+
+  /* STEP BADGE */
+  .step-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:20px; padding:4px 14px; font-family:'Fira Code',monospace; font-size:.76rem; color:var(--chalk-blue); margin-bottom:16px; }
+
+  /* MISTAKE */
+  .mistake-pair { margin-bottom:22px; }
+  .m-label { font-family:'Architects Daughter'; font-size:1rem; margin-bottom:7px; color:var(--chalk-orange); }
+  .m-block { border-radius:10px; padding:12px 16px; margin-top:5px; }
+  .m-wrong { background:rgba(255,107,107,.07); border:1px solid rgba(255,107,107,.3); }
+  .m-right { background:rgba(29,209,161,.07); border:1px solid rgba(29,209,161,.3); }
+  .m-block code { font-family:'Fira Code',monospace; font-size:.8rem; color:var(--chalk-white); display:block; white-space:pre; }
+
+  /* CODE */
+  pre { background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:18px 20px; overflow-x:auto; margin:12px 0; position:relative; }
+  pre code { font-family:'Fira Code',monospace; font-size:.8rem; line-height:1.7; color:var(--chalk-white); }
+  .copy-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.13); color:rgba(255,255,255,.45); padding:3px 10px; border-radius:6px; font-family:'Fira Code',monospace; font-size:.7rem; cursor:pointer; transition:all .15s; }
+  .copy-btn:hover { background:rgba(254,202,87,.2); color:var(--chalk-yellow); border-color:var(--chalk-yellow); }
+  .copy-btn.done { background:rgba(29,209,161,.2); color:var(--chalk-green); border-color:var(--chalk-green); }
+  .cm  { color:#546e7a; }
+  .cmd { color:var(--chalk-blue); }
+  .flg { color:var(--chalk-pink); }
+  .str { color:var(--chalk-green); }
+
+  /* INTERVIEW Q */
+  .iq { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .iq-q { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; cursor:pointer; }
+  .iq-q:hover { background:rgba(255,255,255,.03); }
+  .iq-num { width:28px; height:28px; border-radius:50%; background:rgba(72,219,251,.13); color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+  .iq-text { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; line-height:1.4; }
+  .iq-arr { color:rgba(255,255,255,.28); font-size:.9rem; transition:transform .2s; margin-top:4px; }
+  .iq.open .iq-arr { transform:rotate(180deg); }
+  .iq-a { display:none; padding:0 20px 16px 60px; font-size:.88rem; color:rgba(255,255,255,.62); line-height:1.65; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; margin-top:-1px; }
+  .iq.open .iq-a { display:block; }
+
+  /* QUIZ */
+  .quiz-item { margin-bottom:22px; padding-bottom:16px; border-bottom:1px dashed rgba(255,255,255,.06); }
+  .quiz-q { font-family:'Architects Daughter'; font-size:1.15rem; margin-bottom:10px; }
+  .quiz-opts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .quiz-opt { font-family:'Architects Daughter'; color:var(--chalk-blue); font-size:1rem; cursor:pointer; padding:7px 10px; border-radius:8px; border:1px solid rgba(72,219,251,.2); transition:all .15s; }
+  .quiz-opt:hover { background:rgba(72,219,251,.08); }
+  .quiz-opt.correct { background:rgba(29,209,161,.14); border-color:var(--chalk-green); color:var(--chalk-green); pointer-events:none; }
+  .quiz-opt.wrong   { background:rgba(255,107,107,.1); border-color:var(--chalk-red); color:var(--chalk-red); pointer-events:none; }
+  .answer-key { border:2px dashed var(--chalk-green); padding:18px 22px; border-radius:14px; margin-top:28px; background:rgba(29,209,161,.05); }
+
+  /* CLOSING CARDS */
+  .closing-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+  .cc { background:var(--surface); border:2px solid; border-radius:16px; padding:18px 20px; }
+  .cc .icon { font-size:1.5rem; margin-bottom:7px; }
+  .cc .title { font-family:'Architects Daughter'; font-size:1.05rem; margin-bottom:6px; }
+  .cc .body  { font-size:.86rem; color:rgba(255,255,255,.68); line-height:1.6; }
+  .cc.takeaway  { border-color:var(--chalk-yellow); }
+  .cc.interview { border-color:var(--chalk-blue); }
+  .cc.assign    { border-color:var(--chalk-green); }
+  .cc.challenge { border-color:var(--chalk-orange); }
+  .cc.mistake   { border-color:var(--chalk-red); }
+  .cc.protip    { border-color:var(--chalk-pink); }
+
+  /* CHEAT TABLE */
+  .cmd-table { width:100%; border-collapse:collapse; margin:14px 0; }
+  .cmd-table th { color:var(--chalk-yellow); border-bottom:2px solid var(--chalk-yellow); text-align:left; padding:10px 12px; font-family:'Architects Daughter'; font-size:1rem; }
+  .cmd-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.07); font-size:.81rem; vertical-align:top; }
+  .cmd-table td:first-child { font-family:'Fira Code',monospace; color:var(--chalk-blue); white-space:nowrap; }
+  .cmd-table td:last-child  { color:rgba(255,255,255,.58); }
+  .cs-title { font-family:'Architects Daughter'; color:var(--chalk-pink); font-size:1.5rem; margin:32px 0 8px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+
+  /* LAB */
+  .lab-step { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:20px 22px; margin-bottom:13px; }
+  .lab-hdr { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .lab-num { width:30px; height:30px; border-radius:50%; background:rgba(254,202,87,.13); color:var(--chalk-yellow); font-family:'Architects Daughter'; font-size:1.1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .lab-title { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; }
+  .lab-chk { width:18px; height:18px; accent-color:var(--chalk-green); cursor:pointer; }
+  .accept { background:rgba(29,209,161,.05); border:1px solid rgba(29,209,161,.28); border-radius:9px; padding:10px 14px; margin-top:9px; font-size:.83rem; color:var(--chalk-green); }
+  .lab-prog-wrap { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:16px 20px; display:flex; align-items:center; gap:14px; margin-top:10px; }
+  .lab-bar { flex:1; height:6px; background:rgba(255,255,255,.09); border-radius:3px; }
+  .lab-fill { height:100%; background:linear-gradient(90deg,var(--chalk-green),var(--chalk-blue)); border-radius:3px; width:0; transition:width .3s; }
+
+  /* FOOTER */
+  .footer { text-align:center; color:#555; margin-top:60px; font-family:'Architects Daughter'; border-top:1px solid rgba(255,255,255,.09); padding-top:20px; }
+  .footer a { color:var(--chalk-blue); text-decoration:none; font-family:'Fira Code'; font-size:.85rem; }
+
+  
+  /* LESSON NAVIGATION */
+  .lesson-nav { margin-top:40px; padding-top:20px; border-top:2px solid rgba(255,255,255,.09); }
+  .nav-inner { display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap; }
+  .nav-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:10px; font-family:'Architects Daughter',cursive; font-size:.92rem; text-decoration:none; transition:all .15s; border:1px solid rgba(255,255,255,.12); color:var(--chalk-white); background:var(--surface); white-space:nowrap; }
+  .nav-btn:hover { border-color:var(--chalk-yellow); color:var(--chalk-yellow); background:rgba(254,202,87,.06); transform:translateY(-1px); }
+  .nav-btn.up { border-color:rgba(72,219,251,.2); color:var(--chalk-blue); }
+  .nav-btn.up:hover { border-color:var(--chalk-blue); background:rgba(72,219,251,.06); }
+  .nav-btn.prev { border-color:rgba(255,255,255,.1); }
+  .nav-btn.next { border-color:rgba(255,255,255,.1); }
+  .nav-btn.disabled { opacity:.3; pointer-events:none; border-color:transparent; background:transparent; }
+  @media(max-width:680px) {
+    .nav-inner { flex-direction:column; align-items:stretch; }
+    .nav-btn { justify-content:center; }
+  }
+
+  /* BACK TO TOP floating button */
+  .to-top { position:fixed; bottom:30px; right:30px; width:48px; height:48px; border-radius:50%; background:var(--chalk-yellow); color:#0a0e14; border:none; cursor:pointer; font-size:1.3rem; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:all .25s ease; z-index:1000; box-shadow:0 4px 16px rgba(254,202,87,.25); }
+  .to-top.visible { opacity:1; visibility:visible; }
+  .to-top:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(254,202,87,.35); }
+  @media(max-width:680px) {
+    .to-top { bottom:16px; right:16px; width:42px; height:42px; font-size:1.1rem; }
+  }
+
+
+@media(max-width:680px) {
+    .blackboard { padding:22px 16px; }
+    h1 { font-size:2.1rem; }
+    .closing-grid,.stat-row { grid-template-columns:1fr; }
+    .author-header { flex-direction:column; gap:14px; }
+    .author-contact { text-align:left; }
+    .vs-row { flex-direction:column; }
+    .boot-chain { flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="blackboard">
+
+<!-- AUTHOR HEADER -->
+<header class="author-header">
+  <div class="author-info">
+    <h2>Aryashree Pritikrishna</h2>
+    <p>AI Powered DevOps &amp; Platform Engineering</p>
+  </div>
+  <div class="author-contact">
+    <div class="contact-item">&#128188; <a href="https://www.linkedin.com/in/aryashreepritikrishna/">linkedin.com/in/aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128250; <a href="https://www.youtube.com/@aryashreepritikrishna">youtube.com/@aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128231; <a href="mailto:aryashreep@gmail.com">aryashreep@gmail.com</a></div>
+  </div>
+</header>
+
+<!-- PAGE TITLE -->
+<header>
+  <h1>Essential Commands</h1>
+  <p class="subtitle">M01 · U01 · Day 02 — Linux Internals</p>
+  <div class="meta-badges">
+    <span class="badge badge-mod">M01 · Linux Foundations</span>
+    <span class="badge badge-time">&#9201; 45 min</span>
+    <span class="badge badge-status">&#9679; Ready</span>
+  </div>
+</header>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('lesson',this)">&#128214; Lesson</button>
+  <button class="tab-btn" onclick="switchTab('cheatsheet',this)">&#128203; Cheat Sheet</button>
+  <button class="tab-btn" onclick="switchTab('lab',this)">&#129514; Lab</button>
+</div>
+
+<!-- ══════════════ TAB 1 — LESSON ══════════════ -->
+<div class="tab-pane active" id="tab-lesson">
+
+<!-- INTRO DIALOGUE -->
+<section>
+  <div class="intro-banner">
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"Jagu, I Googled 'Linux commands' and got <span class="chalk-text">500+ commands</span>! How do I even start? My head is spinning!"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"Golu, relax! You only need <span class="chalk-text">20 core commands</span> for 80% of daily work. Master these first — everything else is just variations!"</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="content-box" style="margin-top:20px;border-left:4px solid var(--chalk-yellow);">
+      <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:9px;">What we learn today</h3>
+      <p class="handwritten" style="font-size:1.1rem;">4 command groups that cover <b>every daily DevOps task</b> — navigate the filesystem, manage files, check system health, and always know how to get help when stuck.</p>
+    </div>
+  </div>
+</section>
+
+<!-- LEARNING OBJECTIVES -->
+<section>
+  <div class="topic-title">&#127919; Learning Objectives</div>
+  <div class="content-box" style="border-left:5px solid var(--chalk-green);">
+    <ul>
+      <li><strong>Navigate:</strong> Move confidently through any Linux filesystem using pwd, cd, ls, and tree.</li>
+      <li><strong>Manage Files:</strong> Create, copy, move, and delete files and directories safely.</li>
+      <li><strong>Check System Info:</strong> Inspect disk usage, memory, running processes, and uptime.</li>
+      <li><strong>Get Help:</strong> Use man, --help, info, and tldr to learn any new command on your own.</li>
+    </ul>
+    <p class="handwritten" style="color:var(--chalk-red);margin-top:14px;font-size:1.1rem;">
+      &#128161; <span class="chalk-text">Why it matters:</span> A DevOps engineer who can't navigate Linux confidently will be slow in every incident, every deployment, every debug session — forever.
+    </p>
+  </div>
+</section>
+
+<!-- ① STORY -->
+<section>
+  <div class="step-badge">&#9312; Story · 2 min</div>
+  <div class="topic-title">&#128214; The Day Golu Lost His Files</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);">
+    <p class="handwritten" style="font-size:1.2rem;line-height:1.75;">
+      It was Golu's <span class="chalk-text">third day</span> on the job. He SSHed into the production server and needed to clean up some temp files. He typed what he thought was the right path and ran <code style="font-family:'Fira Code';color:var(--chalk-red);">rm -rf *</code>.
+    </p>
+    <p class="handwritten" style="font-size:1.2rem;line-height:1.75;margin-top:14px;">
+      But he was in <span class="chalk-text">/etc</span> — not <span class="chalk-text">/tmp</span>. He had never typed <code style="font-family:'Fira Code';color:var(--chalk-blue);">pwd</code> to check where he was. The config files for nginx, SSH, and cron were gone. The server was unrecoverable.
+    </p>
+    <div class="doodle-container" style="margin-top:18px;">
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+      <div class="speech-bubble" style="border-color:var(--chalk-blue);">"Just 5 commands cover 80% of navigation: <span class="chalk-text">pwd</span> tells you WHERE you are. <span class="chalk-text">ls</span> tells you WHAT is there. Never run a destructive command without checking both first!"</div>
+    </div>
+  </div>
+</section>
+
+<!-- ② REAL-WORLD PROBLEM -->
+<section>
+  <div class="step-badge">&#9313; Real-World Problem · 3 min</div>
+  <div class="topic-title">&#128640; Why Commands Matter in the Real World</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);">
+    <p style="margin-bottom:20px;color:rgba(255,255,255,.75);line-height:1.7;">
+      Every DevOps task — from deployments to incident response — happens in a terminal. Commands are your hands. Without mastering them, every task takes 10x longer.
+    </p>
+    <div class="topic-flow">
+      <div class="tf-row">
+        <div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.15);color:var(--chalk-yellow);">P</div><div class="tf-line"></div></div>
+        <div class="tf-body"><h4 style="color:var(--chalk-yellow);">Problem</h4><p>Production server down — you SSH in but don't know where configs are, what processes are running, or how much disk is left.</p></div>
+      </div>
+      <div class="tf-row">
+        <div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.15);color:var(--chalk-blue);">S</div><div class="tf-line"></div></div>
+        <div class="tf-body"><h4 style="color:var(--chalk-blue);">Story</h4><p>rm -rf in /etc — Golu deleted production configs because he didn't check pwd first. Career-ending mistake.</p></div>
+      </div>
+      <div class="tf-row">
+        <div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,67,.15);color:var(--chalk-orange);">V</div><div class="tf-line"></div></div>
+        <div class="tf-body"><h4 style="color:var(--chalk-orange);">Visualization</h4><p>Filesystem tree map — think of Linux as a tree. pwd = which branch. cd = move branches. ls = see leaves.</p></div>
+      </div>
+      <div class="tf-row">
+        <div class="tf-spine"><div class="tf-dot" style="background:rgba(29,209,161,.15);color:var(--chalk-green);">T</div><div class="tf-line"></div></div>
+        <div class="tf-body"><h4 style="color:var(--chalk-green);">Theory</h4><p>4 command groups: Navigation (pwd/cd/ls), File Ops (mkdir/cp/mv/rm), System Info (df/free/top), Help (man/--help/tldr).</p></div>
+      </div>
+      <div class="tf-row">
+        <div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,243,.15);color:var(--chalk-pink);">H</div><div class="tf-line"></div></div>
+        <div class="tf-body"><h4 style="color:var(--chalk-pink);">Hands-on</h4><p>4 demo steps: orient with pwd/ls, build lab tree, practice file ops safely, system health check routine.</p></div>
+      </div>
+      <div class="tf-row">
+        <div class="tf-spine"><div class="tf-dot" style="background:rgba(255,107,107,.15);color:var(--chalk-red);">B</div><div class="tf-line"></div></div>
+        <div class="tf-body"><h4 style="color:var(--chalk-red);">Best Practice</h4><p>Always pwd + ls -la before destructive commands. Use cp -i, rm -i. Run health check on every new server.</p></div>
+      </div>
+      <div class="tf-row">
+        <div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.15);color:var(--chalk-blue);">I</div><div class="tf-line"></div></div>
+        <div class="tf-body"><h4 style="color:var(--chalk-blue);">Interview</h4><p>pwd vs cd? rm vs rm -rf? hard vs soft link? find with -size? These are asked in EVERY DevOps interview.</p></div>
+      </div>
+      <div class="tf-row">
+        <div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.15);color:var(--chalk-yellow);">A</div></div>
+        <div class="tf-body"><h4 style="color:var(--chalk-yellow);">Assignment</h4><p>Build a DevOps lab tree, run health checks, practice cp/mv with -i flag, create symlinks, find large files.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ③ THEORY -->
+<section>
+  <div class="step-badge">&#9314; Theory · 5 min</div>
+  <div class="topic-title">&#128218; The 4 Command Groups</div>
+
+  <!-- Group 1: Navigation -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);margin-bottom:28px;">
+    <h3 style="color:var(--chalk-blue);margin-bottom:14px;font-family:'Architects Daughter';">&#128281; Group 1 — Navigation</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:16px;line-height:1.6;">These commands answer two questions: <strong>Where am I?</strong> and <strong>What is here?</strong> Never skip these before running anything destructive.</p>
+    <table class="cmd-table">
+      <thead><tr><th>Command</th><th>What it does</th><th>Common flags</th></tr></thead>
+      <tbody>
+        <tr><td>pwd</td><td>Print Working Directory — shows your exact current location</td><td>-L (logical), -P (physical)</td></tr>
+        <tr><td>cd /path</td><td>Change Directory — move to a different location</td><td>cd ~ (home), cd - (previous dir), cd .. (up one level)</td></tr>
+        <tr><td>ls</td><td>List directory contents</td><td>-l (long format), -a (show hidden), -h (human readable sizes), -la (combined)</td></tr>
+        <tr><td>tree</td><td>Display directory structure as a visual tree</td><td>-L 2 (depth limit), -a (include hidden), -d (dirs only)</td></tr>
+      </tbody>
+    </table>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Where am I right now?</span>
+<span class="cmd">pwd</span>
+<span class="cm"># Output: /home/golu/devops-lab</span>
+
+<span class="cm"># What is in this directory?</span>
+<span class="cmd">ls</span> <span class="flg">-la</span>
+<span class="cm"># -l = long format (permissions, size, date)</span>
+<span class="cm"># -a = show hidden files (dotfiles like .bashrc)</span>
+
+<span class="cm"># Navigate and visualize</span>
+<span class="cmd">cd</span> /etc
+<span class="cmd">tree</span> <span class="flg">-L 2</span></code></pre>
+  </div>
+
+  <!-- Group 2: File Operations -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);margin-bottom:28px;">
+    <h3 style="color:var(--chalk-green);margin-bottom:14px;font-family:'Architects Daughter';">&#128196; Group 2 — File Operations</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:16px;line-height:1.6;">Create, copy, move, delete. These are your hands in the filesystem. Most production disasters happen from misusing these — especially <code style="font-family:'Fira Code';color:var(--chalk-red);">rm</code>.</p>
+    <table class="cmd-table">
+      <thead><tr><th>Command</th><th>What it does</th><th>Key flags</th></tr></thead>
+      <tbody>
+        <tr><td>mkdir dir</td><td>Make a new directory</td><td>-p (create parent dirs, no error if exists)</td></tr>
+        <tr><td>touch file</td><td>Create empty file or update timestamp</td><td>-t (set specific timestamp)</td></tr>
+        <tr><td>cp src dst</td><td>Copy file or directory</td><td>-r (recursive for dirs), -i (interactive/prompt), -v (verbose)</td></tr>
+        <tr><td>mv src dst</td><td>Move or rename file/directory</td><td>-i (interactive), -v (verbose), -n (no overwrite)</td></tr>
+        <tr><td>rm file</td><td>Remove file or directory</td><td>-r (recursive dirs), -f (force, no prompt), -i (interactive)</td></tr>
+        <tr><td>find /path</td><td>Search for files by name, size, date, type</td><td>-name, -size, -mtime, -type f/d</td></tr>
+        <tr><td>ln -s src dst</td><td>Create a symbolic (soft) link</td><td>-s (symbolic), without -s creates hard link</td></tr>
+      </tbody>
+    </table>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Create nested directories in one shot</span>
+<span class="cmd">mkdir</span> <span class="flg">-p</span> <span class="str">~/devops-lab/m00/u01/day02</span>
+
+<span class="cm"># Create empty files</span>
+<span class="cmd">touch</span> notes.txt config.yaml README.md
+
+<span class="cm"># Copy with interactive prompt (safer)</span>
+<span class="cmd">cp</span> <span class="flg">-i</span> config.yaml config.yaml.bak
+
+<span class="cm"># Find files larger than 100MB</span>
+<span class="cmd">find</span> / <span class="flg">-size</span> <span class="str">+100M</span> <span class="flg">-type</span> f 2>/dev/null
+
+<span class="cm"># Create a symlink</span>
+<span class="cmd">ln</span> <span class="flg">-s</span> /etc/nginx/nginx.conf ~/nginx.conf</code></pre>
+  </div>
+
+  <!-- Group 3: System Info -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-orange);margin-bottom:28px;">
+    <h3 style="color:var(--chalk-orange);margin-bottom:14px;font-family:'Architects Daughter';">&#128202; Group 3 — System Info</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:16px;line-height:1.6;">Before any production change, check the health of the system. Disk full? Out of memory? CPU pegged? These commands tell you in seconds.</p>
+    <table class="cmd-table">
+      <thead><tr><th>Command</th><th>What it shows</th><th>Key flags</th></tr></thead>
+      <tbody>
+        <tr><td>df -h</td><td>Disk Free — shows disk space per filesystem</td><td>-h (human readable), -T (show filesystem type)</td></tr>
+        <tr><td>du -sh *</td><td>Disk Usage — shows size of each file/dir</td><td>-s (summary), -h (human), --max-depth=1</td></tr>
+        <tr><td>free -h</td><td>RAM and swap usage</td><td>-h (human), -m (MB), -s 2 (refresh every 2s)</td></tr>
+        <tr><td>top</td><td>Live process monitor — CPU, memory, load avg</td><td>Press q to quit, k to kill, M to sort by mem</td></tr>
+        <tr><td>htop</td><td>Better interactive process viewer (install first)</td><td>F5 (tree view), F9 (kill), F10 (quit)</td></tr>
+        <tr><td>uptime</td><td>How long system has been running + load averages</td><td>(no flags needed)</td></tr>
+        <tr><td>whoami</td><td>Current logged-in username</td><td>id (shows uid, gid, groups)</td></tr>
+        <tr><td>hostname</td><td>System's hostname</td><td>-I (show all IP addresses)</td></tr>
+      </tbody>
+    </table>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Quick system health check — run these in sequence</span>
+<span class="cmd">df</span> <span class="flg">-h</span>          <span class="cm"># Is disk space OK?</span>
+<span class="cmd">free</span> <span class="flg">-h</span>        <span class="cm"># Is memory OK?</span>
+<span class="cmd">uptime</span>         <span class="cm"># What is the load average?</span>
+<span class="cmd">whoami</span>         <span class="cm"># Am I root or a regular user?</span>
+
+<span class="cm"># Find what is eating disk space</span>
+<span class="cmd">du</span> <span class="flg">-sh</span> /var/log/*  | sort <span class="flg">-rh</span> | head <span class="flg">-10</span></code></pre>
+  </div>
+
+  <!-- Group 4: Getting Help -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);">
+    <h3 style="color:var(--chalk-pink);margin-bottom:14px;font-family:'Architects Daughter';">&#10067; Group 4 — Getting Help</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:16px;line-height:1.6;">The best engineers are not those who memorize every flag — they are those who know how to find answers fast. These four tools are your built-in documentation system.</p>
+    <table class="cmd-table">
+      <thead><tr><th>Command</th><th>What it gives you</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td>man command</td><td>Full manual page — comprehensive reference</td><td>Deep dive into flags and behavior</td></tr>
+        <tr><td>command --help</td><td>Quick inline help summary</td><td>Fast flag lookup, always available</td></tr>
+        <tr><td>info command</td><td>GNU info pages — often more detailed than man</td><td>GNU tools like grep, find, bash</td></tr>
+        <tr><td>tldr command</td><td>Community-curated practical examples</td><td>Quick real-world usage examples</td></tr>
+      </tbody>
+    </table>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Full manual for ls</span>
+<span class="cmd">man</span> ls
+
+<span class="cm"># Quick help inline</span>
+<span class="cmd">ls</span> <span class="flg">--help</span>
+
+<span class="cm"># Practical examples (install: sudo apt install tldr)</span>
+<span class="cmd">tldr</span> find
+
+<span class="cm"># Search man pages by keyword</span>
+<span class="cmd">man</span> <span class="flg">-k</span> <span class="str">"disk usage"</span></code></pre>
+  </div>
+</section>
+
+<!-- ④ LIVE DEMO -->
+<section>
+  <div class="step-badge">&#9315; Live Demo · 15 min</div>
+  <div class="topic-title">&#128187; Hands-On Demo Steps</div>
+
+  <!-- Step 1 -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);margin-bottom:20px;">
+    <h3 style="color:var(--chalk-blue);font-family:'Architects Daughter';margin-bottom:12px;">Step 1 — Explore Where You Are</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.6;">Open a terminal and run these three commands. Look at every line of output before moving on.</p>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># STEP 1: Orient yourself</span>
+<span class="cmd">pwd</span>                   <span class="cm"># See your current directory</span>
+<span class="cmd">ls</span> <span class="flg">-la</span>               <span class="cm"># List everything including hidden files</span>
+<span class="cmd">ls</span> <span class="flg">-lh</span> /etc | head <span class="flg">-20</span>  <span class="cm"># Peek at /etc with human-readable sizes</span></code></pre>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);margin-bottom:20px;">
+    <h3 style="color:var(--chalk-green);font-family:'Architects Daughter';margin-bottom:12px;">Step 2 — Build a Practice Directory Tree</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.6;">Create a full directory structure in one command, then populate it with files.</p>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># STEP 2: Build your sandbox</span>
+<span class="cmd">mkdir</span> <span class="flg">-p</span> <span class="str">~/devops-lab/m00/u01/{configs,scripts,logs}</span>
+<span class="cmd">cd</span> ~/devops-lab/m00/u01
+<span class="cmd">touch</span> configs/app.conf scripts/deploy.sh logs/app.log
+
+<span class="cm"># Verify the structure</span>
+<span class="cmd">tree</span> ~/devops-lab</code></pre>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-orange);margin-bottom:20px;">
+    <h3 style="color:var(--chalk-orange);font-family:'Architects Daughter';margin-bottom:12px;">Step 3 — Practice File Operations Safely</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.6;">Copy, move, and remove files. Always use <code style="font-family:'Fira Code';color:var(--chalk-pink);">-i</code> flag while learning to prevent accidents.</p>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># STEP 3: File operations practice</span>
+<span class="cmd">cp</span> <span class="flg">-i</span> configs/app.conf configs/app.conf.bak
+<span class="cmd">mv</span> logs/app.log logs/app_2026.log
+<span class="cmd">ls</span> <span class="flg">-la</span> configs/ logs/
+
+<span class="cm"># Create a symlink to your config</span>
+<span class="cmd">ln</span> <span class="flg">-s</span> ~/devops-lab/m00/u01/configs/app.conf ~/app.conf
+<span class="cmd">ls</span> <span class="flg">-la</span> ~ | <span class="cmd">grep</span> app.conf</code></pre>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);">
+    <h3 style="color:var(--chalk-pink);font-family:'Architects Daughter';margin-bottom:12px;">Step 4 — System Health Check Routine</h3>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:12px;line-height:1.6;">Run these every time you SSH into an unknown server. Get the habit. This is your first 60 seconds on any server.</p>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># STEP 4: First 60 seconds on any server</span>
+<span class="cmd">whoami</span>             <span class="cm"># Who am I?</span>
+<span class="cmd">hostname</span>           <span class="cm"># What server is this?</span>
+<span class="cmd">uptime</span>             <span class="cm"># Load averages OK?</span>
+<span class="cmd">df</span> <span class="flg">-h</span>             <span class="cm"># Disk space OK?</span>
+<span class="cmd">free</span> <span class="flg">-h</span>           <span class="cm"># Memory OK?</span>
+<span class="cmd">top</span> <span class="flg">-bn1</span> | head <span class="flg">-15</span>  <span class="cm"># Top processes (non-interactive)</span></code></pre>
+  </div>
+</section>
+
+<!-- ⑤ COMMON MISTAKES -->
+<section>
+  <div class="step-badge">&#9316; Common Mistakes · 5 min</div>
+  <div class="topic-title">&#9888; Don't Do This!</div>
+
+  <div class="content-box">
+    <!-- Mistake 1 -->
+    <div class="mistake-pair">
+      <div class="m-label">Mistake #1 — The rm -rf Catastrophe</div>
+      <div class="m-block m-wrong">
+        <code><span style="color:var(--chalk-red);">&#10007; WRONG:</span>  rm -rf /          # Deletes EVERYTHING — entire filesystem!</code>
+        <code style="margin-top:6px;color:rgba(255,255,255,.5);"># Even with --no-preserve-root protection, this is career-ending</code>
+      </div>
+      <div class="m-block m-right">
+        <code><span style="color:var(--chalk-green);">&#10003; RIGHT:</span>  pwd               # Check where you are FIRST</code>
+        <code style="margin-top:4px;color:rgba(255,255,255,.5);">          ls -la            # See what will be deleted</code>
+        <code style="margin-top:4px;color:rgba(255,255,255,.5);">          rm -rf /path/to/specific/dir  # Use absolute path</code>
+      </div>
+    </div>
+
+    <!-- Mistake 2 -->
+    <div class="mistake-pair">
+      <div class="m-label">Mistake #2 — Silent Overwrites with cp</div>
+      <div class="m-block m-wrong">
+        <code><span style="color:var(--chalk-red);">&#10007; WRONG:</span>  cp new-config.conf /etc/app/config.conf</code>
+        <code style="margin-top:6px;color:rgba(255,255,255,.5);"># Silently overwrites the existing file with NO warning!</code>
+      </div>
+      <div class="m-block m-right">
+        <code><span style="color:var(--chalk-green);">&#10003; RIGHT:</span>  cp -i new-config.conf /etc/app/config.conf</code>
+        <code style="margin-top:4px;color:rgba(255,255,255,.5);"># -i asks "overwrite?" before replacing. Use always while learning.</code>
+      </div>
+    </div>
+
+    <!-- Mistake 3 -->
+    <div class="mistake-pair">
+      <div class="m-label">Mistake #3 — ls Without Flags (Missing Hidden Files)</div>
+      <div class="m-block m-wrong">
+        <code><span style="color:var(--chalk-red);">&#10007; WRONG:</span>  ls</code>
+        <code style="margin-top:6px;color:rgba(255,255,255,.5);"># Shows only visible files. Misses .env, .bashrc, .ssh/, .gitignore</code>
+      </div>
+      <div class="m-block m-right">
+        <code><span style="color:var(--chalk-green);">&#10003; RIGHT:</span>  ls -la</code>
+        <code style="margin-top:4px;color:rgba(255,255,255,.5);"># Shows ALL files including hidden, with permissions and sizes</code>
+        <code style="margin-top:4px;color:rgba(255,255,255,.5);"># You'll catch .env with secrets, .ssh with key permissions, etc.</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ⑥ INTERVIEW QUESTIONS -->
+<section>
+  <div class="step-badge">&#9317; Interview Questions · 5 min</div>
+  <div class="topic-title">&#127908; Crack the Interview</div>
+
+  <div class="iq" onclick="this.classList.toggle('open')">
+    <div class="iq-q">
+      <div class="iq-num">1</div>
+      <div class="iq-text">What does pwd stand for and when do you use it?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">
+      <strong style="color:var(--chalk-green);">pwd</strong> stands for <strong>Print Working Directory</strong>. It displays the absolute path of the directory you are currently in. You should use it constantly — especially before running destructive commands like rm, before writing to a file, and after cd-ing around. In shell scripts, it helps validate that the script is executing from the expected location. Pro tip: combine with <code style="font-family:'Fira Code'">PS1</code> customization to always show your current directory in the prompt.
+    </div>
+  </div>
+
+  <div class="iq" onclick="this.classList.toggle('open')">
+    <div class="iq-q">
+      <div class="iq-num">2</div>
+      <div class="iq-text">What is the difference between rm and rm -rf?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">
+      <strong style="color:var(--chalk-green);">rm file</strong> deletes a single file and prompts if the file is write-protected. <strong style="color:var(--chalk-red);">rm -rf dir</strong> uses two flags: <code style="font-family:'Fira Code'">-r</code> (recursive — deletes directories and all their contents) and <code style="font-family:'Fira Code'">-f</code> (force — ignores non-existent files, never prompts). Together they are extremely powerful and equally dangerous. Best practice: always specify the exact path, never use wildcards with rm -rf, and always run pwd + ls first to confirm your location.
+    </div>
+  </div>
+
+  <div class="iq" onclick="this.classList.toggle('open')">
+    <div class="iq-q">
+      <div class="iq-num">3</div>
+      <div class="iq-text">How do you find files larger than 100MB on a Linux system?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">
+      Use the <strong style="color:var(--chalk-green);">find</strong> command with the -size flag:
+      <pre style="margin-top:8px;"><code>find / -size +100M -type f 2&gt;/dev/null</code></pre>
+      Breaking this down: <code style="font-family:'Fira Code'">/</code> = search from root, <code style="font-family:'Fira Code'">-size +100M</code> = larger than 100 megabytes, <code style="font-family:'Fira Code'">-type f</code> = files only (not dirs), <code style="font-family:'Fira Code'">2&gt;/dev/null</code> = suppress permission-denied errors. To also sort by size: pipe to <code style="font-family:'Fira Code'">du -sh {} \; | sort -rh</code>.
+    </div>
+  </div>
+
+  <div class="iq" onclick="this.classList.toggle('open')">
+    <div class="iq-q">
+      <div class="iq-num">4</div>
+      <div class="iq-text">What is the difference between a hard link and a soft link?</div>
+      <div class="iq-arr">&#9660;</div>
+    </div>
+    <div class="iq-a">
+      A <strong style="color:var(--chalk-green);">hard link</strong> (<code style="font-family:'Fira Code'">ln src dst</code>) creates another directory entry pointing to the same inode (the actual data on disk). If you delete the original file, the data still exists via the hard link. Hard links cannot cross filesystems and cannot link directories. A <strong style="color:var(--chalk-blue);">soft link / symlink</strong> (<code style="font-family:'Fira Code'">ln -s src dst</code>) creates a special file that contains a path to the target — like a shortcut. If the original is deleted, the symlink becomes a dangling link. Symlinks can cross filesystems and can point to directories. In DevOps, symlinks are common for config management (e.g., /etc/nginx/sites-enabled/ pointing to sites-available/).
+    </div>
+  </div>
+
+  <!-- Quick Quiz -->
+  <div class="content-box" style="margin-top:30px;border-left:4px solid var(--chalk-yellow);">
+    <h3 style="font-family:'Architects Daughter';color:var(--chalk-yellow);margin-bottom:20px;">&#9889; Quick Quiz</h3>
+    <div class="quiz-item">
+      <div class="quiz-q">Which command shows disk space usage for each mounted filesystem?</div>
+      <div class="quiz-opts">
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">du -sh</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,true)">df -h</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">free -h</div>
+        <div class="quiz-opt" onclick="quizAnswer(this,false)">top</div>
+      </div>
+    </div>
+    <div class="answer-key">
+      <strong style="color:var(--chalk-green);font-family:'Architects Daughter';">Answer Key:</strong>
+      <p style="margin-top:8px;font-size:.88rem;color:rgba(255,255,255,.7);line-height:1.6;">
+        <strong>df -h</strong> — disk free per filesystem. <strong>du -sh</strong> — disk used by a specific directory. <strong>free -h</strong> — RAM usage. <strong>top</strong> — live process monitor. Know all four cold for interviews!
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ⑦ ASSIGNMENT -->
+<section>
+  <div class="step-badge">&#9318; Assignment · 10 min</div>
+  <div class="topic-title">&#128203; Filesystem Exploration Task</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-orange);">
+    <h3 style="font-family:'Architects Daughter';color:var(--chalk-orange);margin-bottom:16px;">Your Mission: Build + Inspect a DevOps Lab Tree</h3>
+    <ul>
+      <li>Create the directory structure <code style="font-family:'Fira Code';color:var(--chalk-blue);">~/devops-lab/m00/u01/</code> with at least 5 files inside.</li>
+      <li>Run <code style="font-family:'Fira Code';color:var(--chalk-blue);">ls -la</code> and <code style="font-family:'Fira Code';color:var(--chalk-blue);">tree</code> on your new structure — screenshot the output.</li>
+      <li>Use <code style="font-family:'Fira Code';color:var(--chalk-blue);">find ~/devops-lab -name "*.log" -type f</code> to find all log files you created.</li>
+      <li>Run the system health commands: <code style="font-family:'Fira Code';color:var(--chalk-blue);">df -h</code>, <code style="font-family:'Fira Code';color:var(--chalk-blue);">free -h</code>, <code style="font-family:'Fira Code';color:var(--chalk-blue);">uptime</code>. Note the values.</li>
+      <li>Use <code style="font-family:'Fira Code';color:var(--chalk-blue);">man ls</code> to find one flag you did not know before. Use it.</li>
+    </ul>
+    <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Assignment starter commands</span>
+<span class="cmd">mkdir</span> <span class="flg">-p</span> ~/devops-lab/m00/u01/{configs,scripts,logs,backups,tmp}
+<span class="cmd">touch</span> ~/devops-lab/m00/u01/configs/{app.conf,db.conf,nginx.conf}
+<span class="cmd">touch</span> ~/devops-lab/m00/u01/logs/{app.log,error.log}
+<span class="cmd">tree</span> ~/devops-lab
+<span class="cmd">find</span> ~/devops-lab <span class="flg">-name</span> <span class="str">"*.log"</span> <span class="flg">-type</span> f
+<span class="cmd">df</span> <span class="flg">-h</span> &amp;&amp; <span class="cmd">free</span> <span class="flg">-h</span> &amp;&amp; <span class="cmd">uptime</span></code></pre>
+  </div>
+</section>
+
+<!-- CLOSING CARDS -->
+<section>
+  <div class="topic-title">&#127881; Day 02 Wrap-Up</div>
+  <div class="closing-grid">
+    <div class="cc takeaway">
+      <div class="icon">&#128161;</div>
+      <div class="title">Key Takeaway</div>
+      <div class="body">20 commands cover 80% of daily Linux work. Master pwd, ls, cd, mkdir, cp, mv, rm, find, df, free, top, and man — and you are dangerous in any terminal.</div>
+    </div>
+    <div class="cc interview">
+      <div class="icon">&#127908;</div>
+      <div class="title">Interview Question</div>
+      <div class="body">How do you find all files modified in the last 24 hours? Answer: <code style="font-family:'Fira Code'">find / -mtime -1 -type f 2>/dev/null</code></div>
+    </div>
+    <div class="cc assign">
+      <div class="icon">&#128203;</div>
+      <div class="title">Assignment</div>
+      <div class="body">Create the directory tree <code style="font-family:'Fira Code'">~/devops-lab/m00/u01/</code> with 5 files inside. Run ls -la and tree to verify. Submit a screenshot.</div>
+    </div>
+    <div class="cc challenge">
+      <div class="icon">&#9889;</div>
+      <div class="title">Challenge</div>
+      <div class="body">Use find + xargs to count total lines in all .log files under /var/log: <code style="font-family:'Fira Code'">find /var/log -name "*.log" -type f | xargs wc -l 2>/dev/null | tail -1</code></div>
+    </div>
+    <div class="cc mistake">
+      <div class="icon">&#9888;</div>
+      <div class="title">Never Do This</div>
+      <div class="body">Never run <code style="font-family:'Fira Code'">rm -rf</code> without first running <code style="font-family:'Fira Code'">pwd</code> to check your current directory. One wrong path = irrecoverable damage.</div>
+    </div>
+    <div class="cc protip">
+      <div class="icon">&#128293;</div>
+      <div class="title">Pro Tip</div>
+      <div class="body">Add <code style="font-family:'Fira Code'">alias ll='ls -lahF --color=auto'</code> to your ~/.bashrc. Run <code style="font-family:'Fira Code'">source ~/.bashrc</code>. Type ll instead of ls. Saves hours every week.</div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /tab-lesson -->
+
+<!-- ══════════════ TAB 2 — CHEAT SHEET ══════════════ -->
+<div class="tab-pane" id="tab-cheatsheet">
+
+<div class="cs-title">Navigation Commands</div>
+<table class="cmd-table">
+  <thead><tr><th>Command</th><th>Description</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>pwd</td><td>Print current working directory</td><td>pwd</td></tr>
+    <tr><td>cd /path</td><td>Change to absolute path</td><td>cd /var/log</td></tr>
+    <tr><td>cd ~</td><td>Go to home directory</td><td>cd ~</td></tr>
+    <tr><td>cd ..</td><td>Go up one level</td><td>cd ..</td></tr>
+    <tr><td>cd -</td><td>Go to previous directory</td><td>cd -</td></tr>
+    <tr><td>ls</td><td>List directory contents</td><td>ls</td></tr>
+    <tr><td>ls -la</td><td>Long format + hidden files</td><td>ls -la /etc</td></tr>
+    <tr><td>ls -lh</td><td>Long format + human-readable sizes</td><td>ls -lh /var/log</td></tr>
+    <tr><td>ls -lt</td><td>Sort by modification time</td><td>ls -lt /tmp</td></tr>
+    <tr><td>tree</td><td>Visual directory tree</td><td>tree -L 2 ~</td></tr>
+    <tr><td>tree -d</td><td>Directories only</td><td>tree -d /etc</td></tr>
+    <tr><td>tree -a</td><td>Include hidden files</td><td>tree -a ~</td></tr>
+  </tbody>
+</table>
+
+<div class="cs-title">File Operations</div>
+<table class="cmd-table">
+  <thead><tr><th>Command</th><th>Description</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>mkdir dir</td><td>Create directory</td><td>mkdir mydir</td></tr>
+    <tr><td>mkdir -p a/b/c</td><td>Create nested dirs (no error if exists)</td><td>mkdir -p ~/lab/m00/u01</td></tr>
+    <tr><td>touch file</td><td>Create empty file or update timestamp</td><td>touch notes.txt</td></tr>
+    <tr><td>cp src dst</td><td>Copy file</td><td>cp app.conf app.conf.bak</td></tr>
+    <tr><td>cp -r src dst</td><td>Copy directory recursively</td><td>cp -r configs/ backup/</td></tr>
+    <tr><td>cp -i src dst</td><td>Copy with overwrite confirmation</td><td>cp -i new.conf /etc/app.conf</td></tr>
+    <tr><td>mv src dst</td><td>Move or rename</td><td>mv old.log archive/old.log</td></tr>
+    <tr><td>mv -i src dst</td><td>Move with overwrite confirmation</td><td>mv -i file.txt /tmp/</td></tr>
+    <tr><td>rm file</td><td>Remove file</td><td>rm temp.txt</td></tr>
+    <tr><td>rm -r dir</td><td>Remove directory recursively</td><td>rm -r old-logs/</td></tr>
+    <tr><td>rm -rf dir</td><td>Force remove (no prompts) — use with care!</td><td>rm -rf /tmp/build/</td></tr>
+    <tr><td>find /p -name "*.log"</td><td>Find files by name pattern</td><td>find /var/log -name "*.log"</td></tr>
+    <tr><td>find /p -size +100M</td><td>Find files larger than 100MB</td><td>find / -size +100M -type f</td></tr>
+    <tr><td>find /p -mtime -1</td><td>Find files modified in last 24h</td><td>find /etc -mtime -1</td></tr>
+    <tr><td>ln -s src dst</td><td>Create symbolic link</td><td>ln -s /etc/nginx/nginx.conf ~/nginx.conf</td></tr>
+    <tr><td>ln src dst</td><td>Create hard link</td><td>ln original.txt hardlink.txt</td></tr>
+  </tbody>
+</table>
+
+<div class="cs-title">System Info Commands</div>
+<table class="cmd-table">
+  <thead><tr><th>Command</th><th>Description</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>df -h</td><td>Disk free per filesystem (human readable)</td><td>df -h</td></tr>
+    <tr><td>df -hT</td><td>Disk free with filesystem type</td><td>df -hT</td></tr>
+    <tr><td>du -sh dir</td><td>Disk used by directory (summary)</td><td>du -sh /var/log</td></tr>
+    <tr><td>du -sh *</td><td>Size of each item in current dir</td><td>du -sh /var/log/*</td></tr>
+    <tr><td>free -h</td><td>RAM and swap usage (human readable)</td><td>free -h</td></tr>
+    <tr><td>free -m</td><td>RAM usage in megabytes</td><td>free -m</td></tr>
+    <tr><td>top</td><td>Live process monitor</td><td>top (press q to quit)</td></tr>
+    <tr><td>top -bn1</td><td>Non-interactive top snapshot</td><td>top -bn1 | head -20</td></tr>
+    <tr><td>htop</td><td>Interactive process viewer (better top)</td><td>htop</td></tr>
+    <tr><td>uptime</td><td>System uptime and load averages</td><td>uptime</td></tr>
+    <tr><td>whoami</td><td>Current username</td><td>whoami</td></tr>
+    <tr><td>id</td><td>User ID, group ID, and groups</td><td>id</td></tr>
+    <tr><td>hostname</td><td>System hostname</td><td>hostname</td></tr>
+    <tr><td>hostname -I</td><td>All IP addresses</td><td>hostname -I</td></tr>
+    <tr><td>uname -a</td><td>Kernel version and system info</td><td>uname -a</td></tr>
+  </tbody>
+</table>
+
+<div class="cs-title">Getting Help</div>
+<table class="cmd-table">
+  <thead><tr><th>Command</th><th>Description</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>man command</td><td>Full manual page for any command</td><td>man ls</td></tr>
+    <tr><td>man -k keyword</td><td>Search man pages by keyword</td><td>man -k "disk usage"</td></tr>
+    <tr><td>man 5 passwd</td><td>Man page section 5 (file formats)</td><td>man 5 crontab</td></tr>
+    <tr><td>command --help</td><td>Quick inline help (always available)</td><td>ls --help</td></tr>
+    <tr><td>command -h</td><td>Short help flag (most commands)</td><td>df -h</td></tr>
+    <tr><td>info command</td><td>GNU info documentation (more detailed)</td><td>info grep</td></tr>
+    <tr><td>tldr command</td><td>Practical community examples</td><td>tldr find</td></tr>
+    <tr><td>which command</td><td>Find location of executable</td><td>which python3</td></tr>
+    <tr><td>type command</td><td>Type of command (alias/builtin/file)</td><td>type ls</td></tr>
+    <tr><td>whatis command</td><td>One-line description from man pages</td><td>whatis grep</td></tr>
+  </tbody>
+</table>
+
+</div><!-- /tab-cheatsheet -->
+
+<!-- ══════════════ TAB 3 — LAB ══════════════ -->
+<div class="tab-pane" id="tab-lab">
+
+<section style="margin-bottom:20px;">
+  <div class="topic-title">&#129514; Day 02 — Hands-On Lab</div>
+  <p style="color:rgba(255,255,255,.65);margin-bottom:24px;line-height:1.7;font-size:.92rem;">
+    Complete all 6 steps in order. Check each step off when done. The progress bar tracks your completion. All commands should be run in a Linux terminal (WSL, SSH, VM, or native Linux).
+  </p>
+
+  <!-- Progress Bar -->
+  <div class="lab-prog-wrap">
+    <span style="font-family:'Architects Daughter';color:var(--chalk-yellow);font-size:.95rem;">Progress</span>
+    <div class="lab-bar"><div class="lab-fill" id="lab-fill"></div></div>
+    <span id="lab-count" style="font-family:'Fira Code';font-size:.8rem;color:var(--chalk-blue);">0 / 6</span>
+  </div>
+</section>
+
+<!-- Step 1 -->
+<div class="lab-step">
+  <div class="lab-hdr">
+    <div class="lab-num">1</div>
+    <div class="lab-title">Navigation Practice — pwd, cd, ls -la</div>
+    <input type="checkbox" class="lab-chk" onchange="updateLabProgress()"/>
+  </div>
+  <p style="color:rgba(255,255,255,.65);font-size:.88rem;margin-bottom:12px;">Open a terminal and orient yourself. Run each command and read every line of output before continuing.</p>
+  <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Where am I?</span>
+<span class="cmd">pwd</span>
+
+<span class="cm"># What's in my home directory (including hidden files)?</span>
+<span class="cmd">ls</span> <span class="flg">-la</span> ~
+
+<span class="cm"># Navigate to /etc and see what's there</span>
+<span class="cmd">cd</span> /etc && <span class="cmd">ls</span> <span class="flg">-lh</span> | head <span class="flg">-20</span>
+
+<span class="cm"># Go back home</span>
+<span class="cmd">cd</span> ~
+<span class="cmd">pwd</span></code></pre>
+  <div class="accept">Acceptance: You can see your home directory path from pwd and spot at least one hidden file (starting with .) in the ls -la output.</div>
+</div>
+
+<!-- Step 2 -->
+<div class="lab-step">
+  <div class="lab-hdr">
+    <div class="lab-num">2</div>
+    <div class="lab-title">Create Directory Structure — mkdir -p</div>
+    <input type="checkbox" class="lab-chk" onchange="updateLabProgress()"/>
+  </div>
+  <p style="color:rgba(255,255,255,.65);font-size:.88rem;margin-bottom:12px;">Build a complete lab directory tree with one command, then verify it with tree.</p>
+  <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Create nested directories in one shot</span>
+<span class="cmd">mkdir</span> <span class="flg">-p</span> ~/devops-lab/m00/u01/{configs,scripts,logs,backups,tmp}
+
+<span class="cm"># Verify the structure</span>
+<span class="cmd">tree</span> ~/devops-lab
+
+<span class="cm"># If tree is not installed:</span>
+<span class="cm"># sudo apt install tree   (Ubuntu/Debian)</span>
+<span class="cm"># sudo yum install tree   (RHEL/CentOS)</span>
+<span class="cm"># brew install tree       (macOS)</span></code></pre>
+  <div class="accept">Acceptance: tree shows 5 subdirectories (configs, scripts, logs, backups, tmp) inside ~/devops-lab/m00/u01/.</div>
+</div>
+
+<!-- Step 3 -->
+<div class="lab-step">
+  <div class="lab-hdr">
+    <div class="lab-num">3</div>
+    <div class="lab-title">File Operations — touch, cp, mv</div>
+    <input type="checkbox" class="lab-chk" onchange="updateLabProgress()"/>
+  </div>
+  <p style="color:rgba(255,255,255,.65);font-size:.88rem;margin-bottom:12px;">Create files, copy them (with backup), and rename one. Always verify with ls after each step.</p>
+  <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Create files in your new directories</span>
+<span class="cmd">touch</span> ~/devops-lab/m00/u01/configs/{app.conf,db.conf,nginx.conf}
+<span class="cmd">touch</span> ~/devops-lab/m00/u01/logs/{app.log,error.log,access.log}
+<span class="cmd">touch</span> ~/devops-lab/m00/u01/scripts/deploy.sh
+
+<span class="cm"># Copy a config with backup</span>
+<span class="cmd">cp</span> <span class="flg">-i</span> ~/devops-lab/m00/u01/configs/app.conf \
+       ~/devops-lab/m00/u01/backups/app.conf.bak
+
+<span class="cm"># Rename a log file</span>
+<span class="cmd">mv</span> ~/devops-lab/m00/u01/logs/app.log \
+   ~/devops-lab/m00/u01/logs/app_2026.log
+
+<span class="cm"># Verify</span>
+<span class="cmd">ls</span> <span class="flg">-la</span> ~/devops-lab/m00/u01/logs/</code></pre>
+  <div class="accept">Acceptance: ls -la shows app_2026.log (renamed), error.log, access.log in logs/. backups/ contains app.conf.bak.</div>
+</div>
+
+<!-- Step 4 -->
+<div class="lab-step">
+  <div class="lab-hdr">
+    <div class="lab-num">4</div>
+    <div class="lab-title">System Info Commands — df -h, free -h, uptime</div>
+    <input type="checkbox" class="lab-chk" onchange="updateLabProgress()"/>
+  </div>
+  <p style="color:rgba(255,255,255,.65);font-size:.88rem;margin-bottom:12px;">Run the 60-second server health check routine. Note your system's actual values.</p>
+  <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># 60-second server health check</span>
+<span class="cmd">whoami</span>           <span class="cm"># Who am I on this system?</span>
+<span class="cmd">hostname</span>         <span class="cm"># What machine is this?</span>
+<span class="cmd">uptime</span>           <span class="cm"># How long running? Load avg?</span>
+<span class="cmd">df</span> <span class="flg">-h</span>           <span class="cm"># Disk space per filesystem</span>
+<span class="cmd">free</span> <span class="flg">-h</span>         <span class="cm"># RAM: total / used / free</span>
+<span class="cmd">top</span> <span class="flg">-bn1</span> | head <span class="flg">-12</span>  <span class="cm"># Top processes snapshot</span></code></pre>
+  <div class="accept">Acceptance: You can read df -h output and identify which filesystem has the most space used. You can explain what the three load average numbers in uptime mean.</div>
+</div>
+
+<!-- Step 5 -->
+<div class="lab-step">
+  <div class="lab-hdr">
+    <div class="lab-num">5</div>
+    <div class="lab-title">Find Files — find with name and size filters</div>
+    <input type="checkbox" class="lab-chk" onchange="updateLabProgress()"/>
+  </div>
+  <p style="color:rgba(255,255,255,.65);font-size:.88rem;margin-bottom:12px;">Use find to locate files by name pattern and by size. The -2>/dev/null suppresses permission errors.</p>
+  <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Find all .log files in your lab</span>
+<span class="cmd">find</span> ~/devops-lab <span class="flg">-name</span> <span class="str">"*.log"</span> <span class="flg">-type</span> f
+
+<span class="cm"># Find files larger than 10MB in /var/log</span>
+<span class="cmd">find</span> /var/log <span class="flg">-name</span> <span class="str">"*.log"</span> <span class="flg">-size</span> <span class="str">+10M</span> 2>/dev/null
+
+<span class="cm"># Find files modified in last 24 hours</span>
+<span class="cmd">find</span> /etc <span class="flg">-mtime</span> <span class="str">-1</span> <span class="flg">-type</span> f 2>/dev/null
+
+<span class="cm"># Count .log files under /var/log</span>
+<span class="cmd">find</span> /var/log <span class="flg">-name</span> <span class="str">"*.log"</span> <span class="flg">-type</span> f 2>/dev/null | <span class="cmd">wc</span> <span class="flg">-l</span></code></pre>
+  <div class="accept">Acceptance: find ~/devops-lab -name "*.log" returns at least 3 files. You understand what -mtime -1 means (modified less than 1 day ago).</div>
+</div>
+
+<!-- Step 6 -->
+<div class="lab-step">
+  <div class="lab-hdr">
+    <div class="lab-num">6</div>
+    <div class="lab-title">Create Notes File and Set Up alias</div>
+    <input type="checkbox" class="lab-chk" onchange="updateLabProgress()"/>
+  </div>
+  <p style="color:rgba(255,255,255,.65);font-size:.88rem;margin-bottom:12px;">Solidify today's learning by writing a notes file. Then set up the ll alias that will save you time every day.</p>
+  <pre><button class="copy-btn" onclick="copyCode(this)">copy</button><code><span class="cm"># Create a notes file about today's commands</span>
+<span class="cmd">cat</span> &gt; ~/devops-lab/m00/u01/day02-notes.txt &lt;&lt;'EOF'
+Day 02: Essential Commands
+
+Navigation: pwd, cd, ls -la, tree
+File Ops:   mkdir -p, touch, cp -i, mv, rm -rf (careful!)
+System:     df -h, free -h, uptime, top
+Help:       man, --help, tldr
+
+Key rule: ALWAYS run pwd before rm -rf
+EOF
+
+<span class="cm"># Add the ll alias to your shell config</span>
+<span class="cmd">echo</span> <span class="str">"alias ll='ls -lahF --color=auto'"</span> &gt;&gt; ~/.bashrc
+<span class="cmd">source</span> ~/.bashrc
+
+<span class="cm"># Test it!</span>
+<span class="cmd">ll</span> ~/devops-lab/m00/u01/</code></pre>
+  <div class="accept">Acceptance: cat ~/devops-lab/m00/u01/day02-notes.txt shows your notes. Typing ll works and shows files with human-readable sizes and F suffixes (/ for dirs, * for executables).</div>
+</div>
+
+</div><!-- /tab-lab -->
+
+<!-- FOOTER -->
+<footer class="footer">
+  <p>Essential Commands · M01 · U01 · Day 02</p>
+  <p style="margin-top:8px;"><a href="https://github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap">github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap</a></p>
+</footer>
+
+<!-- LESSON NAVIGATION -->
+<div class="lesson-nav">
+  <div class="nav-inner">
+    <a href="../day-01/L01-linux-architecture.html" class="nav-btn prev">&larr; Day 1 &mdash; Linux Foundation &amp; Architecture</a>
+    <a href="../../index.html" class="nav-btn up">&#8593; Curriculum</a>
+    <a href="../day-03/L04-file-system-hierarchy.html" class="nav-btn next">Day 3 &mdash; File System Hierarchy &rarr;</a>
+  </div>
+</div>
+
+</div><!-- /blackboard -->
+
+<script>
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function copyCode(btn) {
+  const pre = btn.parentElement;
+  const text = pre.innerText.replace('copy', '').replace('copied!', '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    btn.classList.add('done');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('done'); }, 1800);
+  });
+}
+
+function quizAnswer(el, correct) {
+  const opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.classList.remove('correct', 'wrong'));
+  el.classList.add(correct ? 'correct' : 'wrong');
+  if (!correct) {
+    opts.forEach(o => {
+      if (o.onclick && o.onclick.toString().includes('true')) o.classList.add('correct');
+    });
+  }
+}
+
+function updateLabProgress() {
+  const checks = document.querySelectorAll('.lab-chk');
+  const done = Array.from(checks).filter(c => c.checked).length;
+  const total = checks.length;
+  const pct = (done / total) * 100;
+  document.getElementById('lab-fill').style.width = pct + '%';
+  document.getElementById('lab-count').textContent = done + ' / ' + total;
+}
+
+  // ─── Back to top ──────────────────────────────────────────────
+  (function() {
+    var btn = document.createElement('button');
+    btn.className = 'to-top';
+    btn.innerHTML = '&#8593;';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.onclick = function() { window.scrollTo({ top:0, behavior:'smooth' }); };
+    document.body.appendChild(btn);
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        window.requestAnimationFrame(function() {
+          btn.classList.toggle('visible', window.scrollY > 400);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+  })();
+
+</script>
+</body>
+</html>

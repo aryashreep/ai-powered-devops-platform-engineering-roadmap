@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>M01 · L04 — File System Hierarchy | Linux Internals</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg-blackboard: #0a0e14;
+    --chalk-white:  #f1f2f6;
+    --chalk-yellow: #feca57;
+    --chalk-blue:   #48dbfb;
+    --chalk-green:  #1dd1a1;
+    --chalk-pink:   #ff9ff3;
+    --chalk-orange: #ff9f43;
+    --chalk-red:    #ff6b6b;
+    --wood-frame:   #2f3542;
+    --surface:      rgba(255,255,255,0.04);
+  }
+  @media print {
+    body { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; background:var(--bg-blackboard)!important; }
+    .blackboard { border:none!important; box-shadow:none!important; width:100%!important; margin:0!important; padding:10px!important; }
+    section { page-break-inside:avoid; }
+    .tab-nav { display:none!important; }
+    .tab-pane { display:block!important; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg-blackboard); color:var(--chalk-white); font-family:'Inter',sans-serif; padding:20px; }
+  .blackboard { max-width:1000px; margin:0 auto; border:12px solid var(--wood-frame); padding:50px; box-shadow:0 30px 60px rgba(0,0,0,.8); background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px); background-size:30px 30px; }
+
+  /* AUTHOR HEADER */
+  .author-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--chalk-yellow); padding-bottom:20px; margin-bottom:40px; }
+  .author-info h2 { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:1.8rem; }
+  .author-info p  { font-family:'Architects Daughter'; color:var(--chalk-white); font-size:1.1rem; margin-top:5px; }
+  .author-contact { text-align:right; font-family:'Fira Code',monospace; font-size:.82rem; color:var(--chalk-blue); }
+  .author-contact a { color:var(--chalk-blue); text-decoration:none; }
+  .contact-item { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:4px; }
+
+  /* PAGE TITLE */
+  h1 { font-family:'Architects Daughter',cursive; font-size:3.2rem; text-align:center; color:var(--chalk-yellow); text-transform:uppercase; margin-bottom:5px; }
+  .subtitle { text-align:center; color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1.4rem; margin-bottom:16px; }
+  .meta-badges { display:flex; justify-content:center; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
+  .badge { font-family:'Fira Code',monospace; font-size:.78rem; padding:4px 12px; border-radius:20px; border:1px solid; }
+  .badge-mod { border-color:var(--chalk-yellow); color:var(--chalk-yellow); }
+  .badge-time { border-color:var(--chalk-blue); color:var(--chalk-blue); }
+  .badge-status { border-color:var(--chalk-orange); color:var(--chalk-orange); }
+
+  /* TABS */
+  .tab-nav { display:flex; gap:0; margin-bottom:40px; border:2px solid var(--wood-frame); border-radius:12px; overflow:hidden; }
+  .tab-btn { flex:1; padding:14px 20px; font-family:'Architects Daughter',cursive; font-size:1.1rem; background:transparent; color:var(--chalk-white); border:none; cursor:pointer; border-right:2px solid var(--wood-frame); transition:all .2s; }
+  .tab-btn:last-child { border-right:none; }
+  .tab-btn:hover { background:rgba(255,255,255,.06); }
+  .tab-btn.active { background:rgba(254,202,87,.1); color:var(--chalk-yellow); }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; }
+
+  /* SHARED */
+  h2, h3, .handwritten, .speech-bubble, .topic-title { font-family:'Architects Daughter',cursive; }
+  section { margin-bottom:70px; padding-bottom:40px; border-bottom:2px dashed rgba(255,255,255,.1); }
+  section:last-of-type { border-bottom:none; }
+  .topic-title { color:var(--chalk-pink); font-size:2rem; margin-bottom:28px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+  .content-box { background:var(--surface); padding:25px; border-radius:15px; border:2px solid transparent; margin-bottom:20px; }
+  ul { list-style:none; padding-left:0; }
+  li { margin-bottom:13px; padding-left:28px; position:relative; }
+  li::before { content:'→'; position:absolute; left:0; color:var(--chalk-blue); }
+
+  /* CHARACTERS */
+  .doodle-container { display:flex; align-items:center; gap:28px; margin:28px 0; }
+  .doodle-container.right { justify-content:flex-end; margin-top:14px; }
+  .doodle-wrapper { display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .char-name { font-family:'Architects Daughter'; color:var(--chalk-yellow); font-size:.9rem; }  .golu { width:60px; height:100px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .golu-img { width:60px; height:100px; object-fit:cover; object-position:center 20%; border-radius:10px; border:2.5px solid var(--chalk-green); box-shadow:0 0 12px rgba(29,209,161,.2); }
+  .jagu { width:70px; height:110px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .jagu-img { width:70px; height:100px; object-fit:cover; object-position:center 15%; border-radius:10px; border:2.5px solid var(--chalk-blue); box-shadow:0 0 12px rgba(72,219,251,.2); }
+
+  .speech-bubble { border:2px solid var(--chalk-white); border-radius:25px; padding:18px 26px; position:relative; max-width:72%; font-family:'Architects Daughter',cursive; font-size:1.2rem; line-height:1.5; }
+  .speech-bubble::before { content:''; position:absolute; left:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-right:14px solid var(--chalk-white); }
+  .speech-bubble.flip::before { display:none; }
+  .speech-bubble.flip::after { content:''; position:absolute; right:-14px; top:28px; border-top:11px solid transparent; border-bottom:11px solid transparent; border-left:14px solid var(--chalk-white); }
+  .chalk-text { color:var(--chalk-yellow); font-weight:bold; }
+
+  /* INTRO */
+  .intro-banner { border:4px solid var(--chalk-yellow); padding:28px; border-radius:20px; margin-bottom:36px; background:rgba(254,202,87,.05); }
+
+  /* DIAGRAM */
+  .diagram-container { border:3px solid var(--chalk-white); border-radius:25px; padding:36px; text-align:center; background:rgba(0,0,0,.5); margin:28px 0; }
+  .boot-chain { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:5px; }
+  .boot-node { font-family:'Architects Daughter'; font-size:.9rem; padding:8px 13px; border-radius:10px; border:2px solid; white-space:nowrap; }
+  .boot-arr { color:var(--chalk-yellow); font-size:1.2rem; }
+
+  /* TOPIC FLOW */
+  .topic-flow { display:flex; flex-direction:column; }
+  .tf-row { display:flex; align-items:flex-start; gap:14px; }
+  .tf-spine { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+  .tf-dot { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:.85rem; font-weight:700; }
+  .tf-line { width:2px; min-height:20px; flex:1; margin:3px 0; background:rgba(255,255,255,.1); }
+  .tf-body { padding:2px 0 18px; flex:1; }
+  .tf-body h4 { font-family:'Architects Daughter'; font-size:1.1rem; margin-bottom:3px; }
+  .tf-body p  { font-size:.86rem; color:rgba(255,255,255,.55); line-height:1.5; }
+
+  /* VS */
+  .vs-row { display:flex; align-items:center; gap:14px; margin:20px 0; }
+  .vs-circle { width:52px; height:52px; border:3px solid var(--chalk-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Architects Daughter'; font-size:1.3rem; color:var(--chalk-orange); flex-shrink:0; }
+
+  /* STEP BADGE */
+  .step-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:20px; padding:4px 14px; font-family:'Fira Code',monospace; font-size:.76rem; color:var(--chalk-blue); margin-bottom:16px; }
+
+  /* MISTAKE */
+  .mistake-pair { margin-bottom:22px; }
+  .m-label { font-family:'Architects Daughter'; font-size:1rem; margin-bottom:7px; color:var(--chalk-orange); }
+  .m-block { border-radius:10px; padding:12px 16px; margin-top:5px; }
+  .m-wrong { background:rgba(255,107,107,.07); border:1px solid rgba(255,107,107,.3); }
+  .m-right { background:rgba(29,209,161,.07); border:1px solid rgba(29,209,161,.3); }
+  .m-block code { font-family:'Fira Code',monospace; font-size:.8rem; color:var(--chalk-white); display:block; white-space:pre; }
+
+  /* CODE */
+  pre { background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:18px 20px; overflow-x:auto; margin:12px 0; position:relative; }
+  pre code { font-family:'Fira Code',monospace; font-size:.8rem; line-height:1.7; color:var(--chalk-white); }
+  .copy-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.13); color:rgba(255,255,255,.45); padding:3px 10px; border-radius:6px; font-family:'Fira Code',monospace; font-size:.7rem; cursor:pointer; transition:all .15s; }
+  .copy-btn:hover { background:rgba(254,202,87,.2); color:var(--chalk-yellow); border-color:var(--chalk-yellow); }
+  .copy-btn.done { background:rgba(29,209,161,.2); color:var(--chalk-green); border-color:var(--chalk-green); }
+  .cm  { color:#546e7a; }
+  .cmd { color:var(--chalk-blue); }
+  .flg { color:var(--chalk-pink); }
+  .str { color:var(--chalk-green); }
+
+  /* INTERVIEW Q */
+  .iq { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .iq-q { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; cursor:pointer; }
+  .iq-q:hover { background:rgba(255,255,255,.03); }
+  .iq-num { width:28px; height:28px; border-radius:50%; background:rgba(72,219,251,.13); color:var(--chalk-blue); font-family:'Architects Daughter'; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+  .iq-text { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; line-height:1.4; }
+  .iq-arr { color:rgba(255,255,255,.28); font-size:.9rem; transition:transform .2s; margin-top:4px; }
+  .iq.open .iq-arr { transform:rotate(180deg); }
+  .iq-a { display:none; padding:0 20px 16px 60px; font-size:.88rem; color:rgba(255,255,255,.62); line-height:1.65; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; margin-top:-1px; }
+  .iq.open .iq-a { display:block; }
+
+  /* QUIZ */
+  .quiz-box { background:var(--surface); border:2px solid var(--chalk-yellow); border-radius:18px; padding:24px; margin:22px 0; }
+  .quiz-q { font-family:'Architects Daughter'; font-size:1.2rem; color:var(--chalk-yellow); margin-bottom:18px; }
+  .quiz-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .quiz-opt { background:rgba(255,255,255,.04); border:1.5px solid rgba(255,255,255,.14); border-radius:10px; padding:12px 16px; cursor:pointer; font-family:'Architects Daughter'; font-size:1rem; color:var(--chalk-white); transition:all .2s; }
+  .quiz-opt:hover { background:rgba(254,202,87,.08); border-color:var(--chalk-yellow); }
+  .quiz-opt.correct { background:rgba(29,209,161,.12); border-color:var(--chalk-green); color:var(--chalk-green); }
+  .quiz-opt.wrong { background:rgba(255,107,107,.08); border-color:var(--chalk-red); color:var(--chalk-red); }
+  .quiz-result { font-family:'Architects Daughter'; font-size:1.05rem; margin-top:14px; padding:10px 16px; border-radius:10px; display:none; }
+  .quiz-result.show { display:block; }
+  .quiz-result.ok { background:rgba(29,209,161,.1); border:1px solid rgba(29,209,161,.3); color:var(--chalk-green); }
+  .quiz-result.bad { background:rgba(255,107,107,.07); border:1px solid rgba(255,107,107,.3); color:var(--chalk-red); }
+
+  /* FHS TREE */
+  .fhs-tree { font-family:'Fira Code',monospace; font-size:.85rem; line-height:1.9; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:22px 26px; margin:16px 0; }
+  .fhs-root { color:var(--chalk-yellow); font-weight:700; }
+  .fhs-dir { color:var(--chalk-blue); }
+  .fhs-virtual { color:var(--chalk-green); }
+  .fhs-comment { color:#546e7a; }
+
+  /* CLOSING CARDS */
+  .closing-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+  .cc { background:var(--surface); border:2px solid; border-radius:16px; padding:18px 20px; }
+  .cc .icon { font-size:1.5rem; margin-bottom:7px; }
+  .cc .title { font-family:'Architects Daughter'; font-size:1.05rem; margin-bottom:6px; }
+  .cc .body  { font-size:.86rem; color:rgba(255,255,255,.68); line-height:1.6; }
+  .cc.takeaway  { border-color:var(--chalk-yellow); }
+  .cc.interview { border-color:var(--chalk-blue); }
+  .cc.assign    { border-color:var(--chalk-green); }
+  .cc.challenge { border-color:var(--chalk-orange); }
+  .cc.mistake   { border-color:var(--chalk-red); }
+  .cc.protip    { border-color:var(--chalk-pink); }
+
+  /* CHEAT TABLE */
+  .cmd-table { width:100%; border-collapse:collapse; margin:14px 0; }
+  .cmd-table th { color:var(--chalk-yellow); border-bottom:2px solid var(--chalk-yellow); text-align:left; padding:10px 12px; font-family:'Architects Daughter'; font-size:1rem; }
+  .cmd-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.07); font-size:.81rem; vertical-align:top; }
+  .cmd-table td:first-child { font-family:'Fira Code',monospace; color:var(--chalk-blue); white-space:nowrap; }
+  .cmd-table td:last-child  { color:rgba(255,255,255,.58); }
+  .cs-title { font-family:'Architects Daughter'; color:var(--chalk-pink); font-size:1.5rem; margin:32px 0 8px; text-transform:uppercase; border-bottom:1px solid var(--chalk-pink); display:inline-block; }
+
+  /* LAB */
+  .lab-step { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:20px 22px; margin-bottom:13px; }
+  .lab-hdr { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .lab-num { width:30px; height:30px; border-radius:50%; background:rgba(254,202,87,.13); color:var(--chalk-yellow); font-family:'Architects Daughter'; font-size:1.1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .lab-title { font-family:'Architects Daughter'; font-size:1.05rem; flex:1; }
+  .lab-chk { width:18px; height:18px; accent-color:var(--chalk-green); cursor:pointer; }
+  .accept { background:rgba(29,209,161,.05); border:1px solid rgba(29,209,161,.28); border-radius:9px; padding:10px 14px; margin-top:9px; font-size:.83rem; color:var(--chalk-green); }
+  .lab-prog-wrap { background:var(--surface); border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:16px 20px; display:flex; align-items:center; gap:14px; margin-top:10px; }
+  .lab-bar { flex:1; height:6px; background:rgba(255,255,255,.09); border-radius:3px; }
+  .lab-fill { height:100%; background:linear-gradient(90deg,var(--chalk-green),var(--chalk-blue)); border-radius:3px; width:0; transition:width .3s; }
+
+  /* FOOTER */
+  .footer { text-align:center; color:#555; margin-top:60px; font-family:'Architects Daughter'; border-top:1px solid rgba(255,255,255,.09); padding-top:20px; }
+  .footer a { color:var(--chalk-blue); text-decoration:none; font-family:'Fira Code'; font-size:.85rem; }
+
+  
+  /* LESSON NAVIGATION */
+  .lesson-nav { margin-top:40px; padding-top:20px; border-top:2px solid rgba(255,255,255,.09); }
+  .nav-inner { display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap; }
+  .nav-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:10px; font-family:'Architects Daughter',cursive; font-size:.92rem; text-decoration:none; transition:all .15s; border:1px solid rgba(255,255,255,.12); color:var(--chalk-white); background:var(--surface); white-space:nowrap; }
+  .nav-btn:hover { border-color:var(--chalk-yellow); color:var(--chalk-yellow); background:rgba(254,202,87,.06); transform:translateY(-1px); }
+  .nav-btn.up { border-color:rgba(72,219,251,.2); color:var(--chalk-blue); }
+  .nav-btn.up:hover { border-color:var(--chalk-blue); background:rgba(72,219,251,.06); }
+  .nav-btn.prev { border-color:rgba(255,255,255,.1); }
+  .nav-btn.next { border-color:rgba(255,255,255,.1); }
+  .nav-btn.disabled { opacity:.3; pointer-events:none; border-color:transparent; background:transparent; }
+  @media(max-width:680px) {
+    .nav-inner { flex-direction:column; align-items:stretch; }
+    .nav-btn { justify-content:center; }
+  }
+
+  /* BACK TO TOP floating button */
+  .to-top { position:fixed; bottom:30px; right:30px; width:48px; height:48px; border-radius:50%; background:var(--chalk-yellow); color:#0a0e14; border:none; cursor:pointer; font-size:1.3rem; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:all .25s ease; z-index:1000; box-shadow:0 4px 16px rgba(254,202,87,.25); }
+  .to-top.visible { opacity:1; visibility:visible; }
+  .to-top:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(254,202,87,.35); }
+  @media(max-width:680px) {
+    .to-top { bottom:16px; right:16px; width:42px; height:42px; font-size:1.1rem; }
+  }
+
+
+@media(max-width:680px) {
+    .blackboard { padding:22px 16px; }
+    h1 { font-size:2.1rem; }
+    .closing-grid,.quiz-options { grid-template-columns:1fr; }
+    .author-header { flex-direction:column; gap:14px; }
+    .author-contact { text-align:left; }
+    .vs-row { flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+<div class="blackboard">
+
+<!-- AUTHOR HEADER -->
+<header class="author-header">
+  <div class="author-info">
+    <h2>Aryashree Pritikrishna</h2>
+    <p>AI Powered DevOps &amp; Platform Engineering</p>
+  </div>
+  <div class="author-contact">
+    <div class="contact-item">&#128188; <a href="https://www.linkedin.com/in/aryashreepritikrishna/">linkedin.com/in/aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128250; <a href="https://www.youtube.com/@aryashreepritikrishna">youtube.com/@aryashreepritikrishna</a></div>
+    <div class="contact-item">&#128231; <a href="mailto:aryashreep@gmail.com">aryashreep@gmail.com</a></div>
+  </div>
+</header>
+
+<!-- PAGE TITLE -->
+<header>
+  <h1>File System Hierarchy</h1>
+  <p class="subtitle">M01 · U01 · L04 — Linux Internals Day 4</p>
+  <div class="meta-badges">
+    <span class="badge badge-mod">M01 · U01 · Day 04</span>
+    <span class="badge badge-time">&#9201; 45 min</span>
+    <span class="badge badge-status">&#9679; Draft</span>
+  </div>
+</header>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('lesson',this)">&#128214; Lesson</button>
+  <button class="tab-btn" onclick="switchTab('cheatsheet',this)">&#128203; Cheat Sheet</button>
+  <button class="tab-btn" onclick="switchTab('lab',this)">&#129514; Lab</button>
+</div>
+
+<!-- ══════════════ TAB 1 — LESSON ══════════════ -->
+<div class="tab-pane active" id="tab-lesson">
+
+<!-- ① INTRO DIALOGUE -->
+<section>
+  <div class="intro-banner">
+    <div class="doodle-container">
+      <div class="doodle-wrapper">
+        <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+        <span class="char-name">Golu</span>
+      </div>
+      <div class="speech-bubble">"Jagu bhai, server pe kaam karta hoon — <span class="chalk-text">/etc, /var, /opt</span> — ye sab kahan jaata hoon? Sab alag kyun?"</div>
+    </div>
+    <div class="doodle-container right">
+      <div class="speech-bubble flip" style="border-color:var(--chalk-blue)">"Golu, Linux mein har directory ka <span class="chalk-text">EK specific purpose hai.</span> Jab FHS samjh jaoge, config dhundhna 5 second ka kaam banega!"</div>
+      <div class="doodle-wrapper">
+        <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+        <span class="char-name">Jagu</span>
+      </div>
+    </div>
+    <div class="content-box" style="margin-top:20px;border-left:4px solid var(--chalk-yellow);">
+      <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:9px;">Aaj kya seekhenge?</h3>
+      <p class="handwritten" style="font-size:1.1rem;">FHS ka map samjho — configs, logs, binaries, virtual filesystems — sab jagah dhundhna 5 second ka kaam ban jaayega.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ② LEARNING OBJECTIVES -->
+<section>
+  <div class="topic-title">&#127919; Learning Objectives</div>
+  <div class="content-box" style="border-left:5px solid var(--chalk-green);">
+    <ul>
+      <li><strong>Navigate the FHS tree</strong> with confidence — know where everything lives</li>
+      <li><strong>Know exactly where</strong> configs, logs, binaries, and user data live</li>
+      <li><strong>Understand /proc and /sys</strong> as virtual filesystems — not on disk!</li>
+      <li><strong>Debug "file not found" issues faster</strong> — no more 20-minute config hunts</li>
+    </ul>
+    <p class="handwritten" style="color:var(--chalk-red);margin-top:14px;font-size:1.1rem;">
+      &#128161; <span class="chalk-text">Kyu Seekhein?</span> FHS jaane bina har junior DevOps ek hi galti karta hai — config /home mein dhundhta hai. Senior kab tak cover karega?
+    </p>
+  </div>
+</section>
+
+<!-- ③ STORY -->
+<section>
+  <div class="step-badge">&#9313; Story · 2 min</div>
+  <div class="topic-title">&#128214; The 20-Minute Config Hunt</div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);">
+    <p class="handwritten" style="font-size:1.2rem;line-height:1.75;">
+      Ek junior DevOps ko nginx config update karni thi. <span class="chalk-text">20 minute</span> lag gaye — pehle /home check kiya, phir /opt, phir /usr mein ghoom aaya.
+    </p>
+    <p style="font-size:.93rem;color:rgba(255,255,255,.7);margin-top:14px;line-height:1.7;">
+      Senior ne dekha, bina bole quietly type kiya:
+      <code style="font-family:'Fira Code';color:var(--chalk-blue)">ls /etc/nginx/</code>
+      — 5 second. Config mil gayi. Junior ke chehere pe sharam aa gayi.
+    </p>
+    <p style="font-size:.9rem;color:var(--chalk-green);margin-top:12px;font-style:italic;">
+      Senior ne bola: <span style="color:var(--chalk-yellow)">"FHS jaante the."</span> Aaj ke baad tum bhi wahi senior rahoge. &#127919;
+    </p>
+  </div>
+</section>
+
+<!-- ④ REAL-WORLD PROBLEM + TOPIC FLOW -->
+<section>
+  <div class="step-badge">&#9314; Real-world Problem · 3 min</div>
+  <div class="topic-title">&#10071; Topic Flow &amp; Real Impact</div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:16px;">Topic Flow — Is Lesson Ka Rasta</h3>
+    <div class="topic-flow">
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,107,107,.14);color:var(--chalk-red)">P</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-red)">Problem</h4><p>Config dhundhni hai — /etc, /opt, /home — kahan? 20 minute lost.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">S</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-yellow)">Story</h4><p>Senior ne 5 second mein /etc/nginx/ find kiya — FHS jaante the.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">V</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Virtual FS</h4><p>/proc aur /sys — disk pe nahi, RAM mein hain. Kernel ka window.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,243,.14);color:var(--chalk-pink)">T</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-pink)">Theory</h4><p>4 groups: /etc+/var, /home+/root+/tmp, /proc+/sys, /bin+/usr+/opt+/lib.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(29,209,161,.14);color:var(--chalk-green)">H</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-green)">Hands-on</h4><p>ls /etc, tail /var/log, /proc/cpuinfo, which nginx — 4 demo steps.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(255,159,67,.14);color:var(--chalk-orange)">B</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-orange)">Blunders</h4><p>3 common mistakes: /tmp data loss, /usr/bin pollution, /var/log disk full.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(72,219,251,.14);color:var(--chalk-blue)">I</div><div class="tf-line"></div></div><div class="tf-body"><h4 style="color:var(--chalk-blue)">Interview</h4><p>4 real questions: /bin vs /usr/bin, custom scripts, /tmp reboot, /etc vs /var.</p></div></div>
+      <div class="tf-row"><div class="tf-spine"><div class="tf-dot" style="background:rgba(254,202,87,.14);color:var(--chalk-yellow)">A</div></div><div class="tf-body" style="padding-bottom:0"><h4 style="color:var(--chalk-yellow)">Assignment</h4><p>FHS explorer — 10 directories, note contents, draw your own map.</p></div></div>
+    </div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-red);">
+    <h3 class="handwritten" style="color:var(--chalk-red);margin-bottom:13px;">Bina FHS ke kya hoga?</h3>
+    <ul>
+      <li>Config dhundhne mein <strong>20 minute waste</strong> — every single incident</li>
+      <li>/var/log disk full — <strong>services crash</strong> — production outage on your watch</li>
+      <li>/tmp mein data store kiya — <strong>reboot pe sab gone</strong> — data loss incident</li>
+      <li>/usr/bin polluted with custom scripts — <strong>system upgrades break</strong></li>
+      <li>/proc/sys tunables nahi jaante — <strong>performance issues diagnose nahi hote</strong></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ⑤ THEORY -->
+<section>
+  <div class="step-badge">&#9315; Theory · 5 min</div>
+  <div class="topic-title">&#128204; FHS — Chaar Groups Mein Samjho</div>
+
+  <!-- ASCII TREE -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:14px;">The Linux Directory Tree</h3>
+    <div class="fhs-tree">
+<span class="fhs-root">/</span> <span class="fhs-comment">(root — filesystem ka entry point)</span>
+├── <span class="fhs-dir">etc/</span>          <span class="fhs-comment">← system-wide configs</span>
+├── <span class="fhs-dir">var/</span>
+│   └── <span class="fhs-dir">log/</span>      <span class="fhs-comment">← all system &amp; app logs</span>
+├── <span class="fhs-dir">home/</span>
+│   └── <span class="fhs-dir">username/</span> <span class="fhs-comment">← user personal data</span>
+├── <span class="fhs-dir">root/</span>         <span class="fhs-comment">← root user's home (NOT /)!</span>
+├── <span class="fhs-dir">tmp/</span>          <span class="fhs-comment">← temp (CLEARED on reboot)</span>
+├── <span class="fhs-virtual">proc/</span>         <span class="fhs-comment">← virtual: kernel interface (RAM)</span>
+├── <span class="fhs-virtual">sys/</span>          <span class="fhs-comment">← virtual: device tree (RAM)</span>
+├── <span class="fhs-dir">bin/</span> → usr/bin <span class="fhs-comment">← essential binaries (ls, cat, grep)</span>
+├── <span class="fhs-dir">usr/</span>          <span class="fhs-comment">← most user-space software</span>
+├── <span class="fhs-dir">opt/</span>          <span class="fhs-comment">← optional third-party software</span>
+└── <span class="fhs-dir">lib/</span> → usr/lib <span class="fhs-comment">← shared libraries (.so files)</span>
+    </div>
+    <p style="font-size:.82rem;color:rgba(255,255,255,.45);margin-top:4px;font-family:'Fira Code';">Note: <span style="color:var(--chalk-green)">green = virtual filesystem</span> (RAM-based, not on disk)</p>
+  </div>
+
+  <!-- GROUP 1 -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-blue);margin-top:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-blue);margin-bottom:12px;">&#9312; Group 1 — /etc, /var, /var/log</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:16px;">
+        <div style="font-family:'Architects Daughter';font-size:1.15rem;color:var(--chalk-blue);margin-bottom:8px;">/etc</div>
+        <div style="font-size:.83rem;color:rgba(255,255,255,.68);line-height:1.65;">System-wide <strong>configuration files</strong>. nginx, ssh, fstab, passwd, hosts — sab yahan. <span style="color:var(--chalk-red)">Never for data or binaries!</span> Read at boot or service start.</div>
+        <div style="margin-top:10px;font-family:'Fira Code';font-size:.76rem;color:var(--chalk-yellow);">Examples: /etc/nginx/, /etc/ssh/sshd_config, /etc/fstab, /etc/hosts</div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:16px;">
+        <div style="font-family:'Architects Daughter';font-size:1.15rem;color:var(--chalk-yellow);margin-bottom:8px;">/var</div>
+        <div style="font-size:.83rem;color:rgba(255,255,255,.68);line-height:1.65;"><strong>Variable data</strong> — changes at runtime. Logs, spool, databases, cache. Grows over time. <span style="color:var(--chalk-orange)">Monitor disk usage here!</span></div>
+        <div style="margin-top:10px;font-family:'Fira Code';font-size:.76rem;color:var(--chalk-yellow);">Examples: /var/log/, /var/lib/mysql/, /var/cache/, /var/spool/</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,107,107,.06);border:1px solid rgba(255,107,107,.25);border-radius:10px;padding:16px;">
+      <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-red);margin-bottom:8px;">&#9888; /var/log — Production Alert!</div>
+      <div style="font-size:.83rem;color:rgba(255,255,255,.68);line-height:1.65;">/var/log holds ALL system and app logs: <code style="font-family:'Fira Code';color:var(--chalk-blue)">/var/log/syslog</code>, <code style="font-family:'Fira Code';color:var(--chalk-blue)">auth.log</code>, <code style="font-family:'Fira Code';color:var(--chalk-blue)">nginx/access.log</code>. <span style="color:var(--chalk-red);font-weight:600;">/var/log fills up → services crash → this IS a production incident!</span> Set up disk alerts on /var separately.</div>
+    </div>
+  </div>
+
+  <!-- GROUP 2 -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);margin-top:15px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:12px;">&#9313; Group 2 — /home, /root, /tmp</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-yellow);margin-bottom:6px;">/home/username</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.62);line-height:1.6;">User's <strong>personal space</strong>. Dotfiles (.bashrc, .ssh/), documents, downloads. Each user gets /home/their_name.</div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-orange);margin-bottom:6px;">/root</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.62);line-height:1.6;">Root user's home directory. <span style="color:var(--chalk-red)">NOT the filesystem root /!</span> Common confusion — / is root of FS, /root is root user's home.</div>
+      </div>
+      <div style="background:rgba(255,107,107,.06);border:1px solid rgba(255,107,107,.22);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-red);margin-bottom:6px;">/tmp</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.62);line-height:1.6;">Temporary files. <span style="color:var(--chalk-red);font-weight:600;">CLEARED on reboot!</span> Never store important data here. Use /var/lib/appname for persistent app data.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GROUP 3 -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);margin-top:15px;">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:12px;">&#9314; Group 3 — /proc, /sys (Virtual Filesystems)</h3>
+    <div class="diagram-container" style="margin:0 0 16px;">
+      <p class="handwritten" style="color:var(--chalk-green);font-size:1.1rem;margin-bottom:14px;">Virtual FS — RAM-based, Created Fresh at Boot</p>
+      <div class="boot-chain">
+        <span class="boot-node" style="border-color:var(--chalk-yellow);color:var(--chalk-yellow)">Boot</span>
+        <span class="boot-arr">&#8594;</span>
+        <span class="boot-node" style="border-color:var(--chalk-green);color:var(--chalk-green)">Kernel mounts /proc</span>
+        <span class="boot-arr">+</span>
+        <span class="boot-node" style="border-color:var(--chalk-green);color:var(--chalk-green)">Kernel mounts /sys</span>
+        <span class="boot-arr">&#8594;</span>
+        <span class="boot-node" style="border-color:var(--chalk-blue);color:var(--chalk-blue)">RAM only — no disk write</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:16px;">
+        <div style="font-family:'Architects Daughter';font-size:1.15rem;color:var(--chalk-green);margin-bottom:8px;">/proc</div>
+        <div style="font-size:.83rem;color:rgba(255,255,255,.68);line-height:1.65;"><strong>Kernel interface</strong>. Real-time process and system info. NOT on disk — exists only in RAM. Read files here to inspect running kernel state.</div>
+        <div style="margin-top:10px;font-family:'Fira Code';font-size:.75rem;color:var(--chalk-blue);">/proc/cpuinfo, /proc/meminfo<br>/proc/mounts, /proc/1/maps<br>/proc/sys/net/ipv4/ip_forward</div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:16px;">
+        <div style="font-family:'Architects Daughter';font-size:1.15rem;color:var(--chalk-blue);margin-bottom:8px;">/sys</div>
+        <div style="font-size:.83rem;color:rgba(255,255,255,.68);line-height:1.65;"><strong>sysfs</strong> — exposes kernel device tree. Used for tunables and hardware introspection. Write values here to tune kernel params at runtime.</div>
+        <div style="margin-top:10px;font-family:'Fira Code';font-size:.75rem;color:var(--chalk-blue);">/sys/class/net/ (NICs)<br>/sys/block/ (disks)<br>/sys/devices/ (hardware tree)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GROUP 4 -->
+  <div class="content-box" style="border-left:4px solid var(--chalk-pink);margin-top:15px;">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:12px;">&#9315; Group 4 — /bin, /usr, /opt, /lib</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-pink);margin-bottom:6px;">/bin → /usr/bin</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.62);line-height:1.6;"><strong>Essential user binaries</strong>: ls, cat, grep, cp, mv. On modern systems /bin is a symlink to /usr/bin. Do NOT put custom scripts here.</div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-blue);margin-bottom:6px;">/usr</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.62);line-height:1.6;"><strong>Most user-space software</strong>: /usr/bin (all binaries), /usr/lib (libraries), /usr/share (docs, data). Think of it as "Unix System Resources".</div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-orange);margin-bottom:6px;">/opt</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.62);line-height:1.6;"><strong>Optional third-party software</strong>. Chef, Puppet, custom enterprise installs, vendor-packaged apps. Keeps third-party stuff out of /usr.</div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:9px;padding:14px;">
+        <div style="font-family:'Architects Daughter';font-size:1.1rem;color:var(--chalk-yellow);margin-bottom:6px;">/lib → /usr/lib</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.62);line-height:1.6;"><strong>Shared libraries</strong> (.so files). Like DLLs on Windows. Required by binaries in /bin and /sbin. On modern systems symlinked to /usr/lib.</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;background:rgba(254,202,87,.05);border:1px solid rgba(254,202,87,.2);border-radius:9px;padding:14px;">
+      <span style="font-family:'Architects Daughter';color:var(--chalk-yellow);">Custom scripts kahan rakho?</span>
+      <span style="font-size:.83rem;color:rgba(255,255,255,.65);"> → <code style="font-family:'Fira Code';color:var(--chalk-blue)">/usr/local/bin/</code> for system-wide custom scripts. This is the correct FHS location — never pollute /usr/bin or /bin directly.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ⑥ LIVE DEMO -->
+<section>
+  <div class="step-badge">&#9316; Live Demo · 15 min</div>
+  <div class="topic-title">&#9654; Screen Pe Dekho, Terminal Pe Karo</div>
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+      <span class="char-name">Jagu</span>
+    </div>
+    <div class="speech-bubble" style="border-color:var(--chalk-blue)">"Golu, har command type karo — copy paste mat! <span class="chalk-text">Output observe karo, tab samjhoge.</span> FHS ek baar haath se explore karo, phir bhoologe nahi!"</div>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-yellow);">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:12px;">Step 1 — /etc Explore Karo</h3>
+    <pre><code><span class="cm"># /etc mein kya kya hai?</span>
+<span class="cmd">ls</span> /etc
+
+<span class="cm"># OS info — distro aur version</span>
+<span class="cmd">cat</span> /etc/os-release
+
+<span class="cm"># Hosts file — DNS override map</span>
+<span class="cmd">cat</span> /etc/hosts
+
+<span class="cm"># Password file — all system users</span>
+<span class="cmd">cat</span> /etc/passwd
+
+<span class="cm"># nginx config (agar installed hai)</span>
+<span class="cmd">ls</span> /etc/nginx/
+<span class="cmd">cat</span> /etc/nginx/nginx.conf
+
+<span class="cm"># SSH server config</span>
+<span class="cmd">cat</span> /etc/ssh/sshd_config | <span class="cmd">grep</span> <span class="flg">-v</span> <span class="str">'^#'</span> | <span class="cmd">grep</span> <span class="flg">-v</span> <span class="str">'^$'</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-red);">
+    <h3 class="handwritten" style="color:var(--chalk-red);margin-bottom:12px;">Step 2 — /var/log Explore Karo (Disk Check Bhi!)</h3>
+    <pre><code><span class="cm"># /var/log mein kaun kaun si log files hain?</span>
+<span class="cmd">ls</span> <span class="flg">-lh</span> /var/log/
+
+<span class="cm"># syslog ke last 20 lines</span>
+<span class="cmd">tail</span> <span class="flg">-20</span> /var/log/syslog
+
+<span class="cm"># Auth log — login attempts</span>
+<span class="cmd">tail</span> <span class="flg">-20</span> /var/log/auth.log
+
+<span class="cm"># /var disk usage — CRITICAL to monitor!</span>
+<span class="cmd">df</span> <span class="flg">-h</span> /var
+
+<span class="cm"># Biggest log files (agar disk bhar raha hai)</span>
+<span class="cmd">du</span> <span class="flg">-sh</span> /var/log/* 2>/dev/null | <span class="cmd">sort</span> <span class="flg">-rh</span> | <span class="cmd">head</span> <span class="flg">-10</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:12px;">Step 3 — /proc aur /sys Virtual Filesystems</h3>
+    <pre><code><span class="cm"># CPU info — virtual file, not on disk!</span>
+<span class="cmd">cat</span> /proc/cpuinfo | <span class="cmd">grep</span> <span class="str">"model name"</span> | <span class="cmd">head</span> <span class="flg">-1</span>
+
+<span class="cm"># Memory info</span>
+<span class="cmd">cat</span> /proc/meminfo | <span class="cmd">grep</span> <span class="flg">-E</span> <span class="str">"MemTotal|MemFree|MemAvailable"</span>
+
+<span class="cm"># Currently mounted filesystems</span>
+<span class="cmd">cat</span> /proc/mounts
+
+<span class="cm"># Network interfaces via sysfs</span>
+<span class="cmd">ls</span> /sys/class/net/
+
+<span class="cm"># IP forwarding status (1=enabled, 0=disabled)</span>
+<span class="cmd">cat</span> /proc/sys/net/ipv4/ip_forward
+
+<span class="cm"># Currently running processes — each PID has a folder</span>
+<span class="cmd">ls</span> /proc/ | <span class="cmd">grep</span> <span class="str">'^[0-9]'</span> | <span class="cmd">head</span> <span class="flg">-5</span>
+<span class="cmd">cat</span> /proc/1/cmdline && <span class="cmd">echo</span>   <span class="cm"># PID 1 = init/systemd command</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="content-box" style="border-color:var(--chalk-pink);">
+    <h3 class="handwritten" style="color:var(--chalk-pink);margin-bottom:12px;">Step 4 — Software Kahan Rehta Hai?</h3>
+    <pre><code><span class="cm"># which — binary ka path find karo</span>
+<span class="cmd">which</span> nginx
+<span class="cmd">which</span> python3
+<span class="cmd">which</span> bash
+
+<span class="cm"># whereis — binary + man page + source</span>
+<span class="cmd">whereis</span> nginx
+
+<span class="cm"># Symlink resolve karo — actual binary location</span>
+<span class="cmd">readlink</span> <span class="flg">-f</span> $(which python3)
+
+<span class="cm"># /opt — third party software check</span>
+<span class="cmd">ls</span> /opt/
+
+<span class="cm"># /usr/local/bin — custom scripts yahan rakho</span>
+<span class="cmd">ls</span> /usr/local/bin/
+
+<span class="cm"># Shared libraries list</span>
+<span class="cmd">ls</span> /usr/lib/ | <span class="cmd">head</span> <span class="flg">-10</span>
+<span class="cmd">ldd</span> $(which ls)              <span class="cm"># libraries ls needs</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+</section>
+
+<!-- ⑦ COMMON MISTAKES -->
+<section>
+  <div class="step-badge">&#9317; Common Mistakes · 5 min</div>
+  <div class="topic-title">&#9888; Ye Galtiyan Mat Karna!</div>
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"Main /tmp mein app data store kar raha tha Jagu — <span class="chalk-text">server reboot ke baad sab gone!</span>"</div>
+  </div>
+
+  <div class="content-box" style="border-left:5px solid var(--chalk-orange);">
+    <div class="mistake-pair">
+      <div class="m-label">&#9312; App data /tmp mein store karna — reboot pe data gone!</div>
+      <div class="m-block m-wrong"><code>mkdir /tmp/myapp-data && cp important.db /tmp/myapp-data/   # WRONG! Reboot = data lost!</code></div>
+      <div class="m-block m-right"><code>mkdir -p /var/lib/myapp && cp important.db /var/lib/myapp/   # Correct — persistent storage ✓</code></div>
+    </div>
+    <div class="mistake-pair">
+      <div class="m-label">&#9313; Custom script /usr/bin mein daalna — system upgrade pe overwrite ho sakta hai</div>
+      <div class="m-block m-wrong"><code>cp my-deploy-script.sh /usr/bin/deploy    # WRONG! /usr/bin is for OS packages only</code></div>
+      <div class="m-block m-right"><code>cp my-deploy-script.sh /usr/local/bin/deploy && chmod +x /usr/local/bin/deploy   # Correct ✓</code></div>
+    </div>
+    <div class="mistake-pair" style="margin-bottom:0">
+      <div class="m-label">&#9314; /var/log disk usage monitor nahi karna — disk full = production outage</div>
+      <div class="m-block m-wrong"><code># No monitoring on /var/log — one day disk is 100% full, all services crash</code></div>
+      <div class="m-block m-right"><code># Set up disk alert on /var separately (not just /)
+df -h /var                          # Manual check
+# Production: alert when /var > 80% usage
+# Logrotate configured to rotate /var/log/* automatically ✓</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- ⑧ INTERVIEW Q -->
+<section>
+  <div class="step-badge">&#9318; Interview Questions · 5 min</div>
+  <div class="topic-title">&#10067; Interview Mein Yeh Poochenge</div>
+
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">1</div><div class="iq-text">What is the difference between /bin and /usr/bin?</div><div class="iq-arr">&#9662;</div></div>
+    <div class="iq-a">Historically, <strong>/bin</strong> contained essential binaries needed for single-user recovery mode (ls, cat, mount, etc.) and was on a separate small partition. <strong>/usr/bin</strong> had the rest of user-space binaries and required /usr to be mounted. On modern Linux systems (Debian/Ubuntu/Fedora 17+), /bin is a symlink to /usr/bin — the distinction is largely historical. However, knowing this is expected in senior-level interviews. Safe answer: "/bin is essential binaries for system recovery; /usr/bin is the main location for user-space executables. On modern systems /bin symlinks to /usr/bin."</div>
+  </div>
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">2</div><div class="iq-text">Where would you put a custom script that needs to be available system-wide?</div><div class="iq-arr">&#9662;</div></div>
+    <div class="iq-a"><strong>/usr/local/bin/</strong> — this is the FHS-correct location for locally installed scripts and binaries that are not managed by the system's package manager. Never put custom scripts in /usr/bin (managed by package manager, could be overwritten on upgrades) or /bin (system essentials only). Place script there, chmod +x it, and it will be in every user's PATH automatically.</div>
+  </div>
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">3</div><div class="iq-text">Why does /tmp get cleared on reboot?</div><div class="iq-arr">&#9662;</div></div>
+    <div class="iq-a"><strong>/tmp</strong> is designed for temporary files that processes need only during their current run. By clearing it on reboot, the OS ensures no stale lock files, socket files, or partial data from dead processes accumulate. On systemd systems this is handled by <code style="font-family:'Fira Code'">systemd-tmpfiles-clean.service</code> and configured in /usr/lib/tmpfiles.d/. Important: some distros also clear /tmp on a timer (not just reboot). Never store anything important in /tmp — use /var/lib/appname for persistent application data.</div>
+  </div>
+  <div class="iq" onclick="toggleIQ(this)">
+    <div class="iq-q"><div class="iq-num">4</div><div class="iq-text">What is the difference between /etc and /var?</div><div class="iq-arr">&#9662;</div></div>
+    <div class="iq-a"><strong>/etc</strong> contains <em>static configuration</em> — files that humans edit to configure the system. They change rarely and only when an admin makes intentional changes. Examples: /etc/nginx/nginx.conf, /etc/ssh/sshd_config, /etc/fstab.<br><br><strong>/var</strong> contains <em>variable/runtime data</em> — files that change automatically as the system runs. Programs write here, not admins. Examples: /var/log (logs written by services), /var/lib/mysql (database files), /var/spool (mail/print queues), /var/cache. Key distinction: /etc should be in version control; /var should be in backups and disk monitoring.</div>
+  </div>
+</section>
+
+<!-- ⑨ QUIZ -->
+<section>
+  <div class="step-badge">&#9319; Quick Quiz · 2 min</div>
+  <div class="topic-title">&#127891; Test Karo Apne Aap Ko!</div>
+
+  <div class="quiz-box">
+    <div class="quiz-q">Where is the nginx configuration file located on a Linux system?</div>
+    <div class="quiz-options">
+      <button class="quiz-opt" onclick="quizAnswer(this, false)">A) /home/nginx/nginx.conf</button>
+      <button class="quiz-opt" onclick="quizAnswer(this, true)">B) /etc/nginx/nginx.conf</button>
+      <button class="quiz-opt" onclick="quizAnswer(this, false)">C) /usr/nginx/nginx.conf</button>
+      <button class="quiz-opt" onclick="quizAnswer(this, false)">D) /var/nginx/nginx.conf</button>
+    </div>
+    <div class="quiz-result ok" id="quiz-correct">Sahi jawab! /etc = system-wide configs. nginx ki config /etc/nginx/ mein hoti hai. Senior engineers yahan seedha jaate hain — 5 second, not 20 minutes!</div>
+    <div class="quiz-result bad" id="quiz-wrong">Galat! /etc = configuration files ka ghar. /home = user data, /usr = binaries, /var = runtime data. Config ALWAYS in /etc.</div>
+  </div>
+</section>
+
+<!-- ⑩ ASSIGNMENT -->
+<section>
+  <div class="step-badge">&#9320; Assignment · 10 min</div>
+  <div class="topic-title">&#128221; Ab Tum Karo!</div>
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"Jagu, main ab <span class="chalk-text">10 directories explore</span> karunga aur apna FHS map banaunga!"</div>
+  </div>
+  <div class="content-box" style="border-left:4px solid var(--chalk-green);">
+    <h3 class="handwritten" style="color:var(--chalk-green);margin-bottom:14px;">Task: FHS Explorer — 10 Key Directories</h3>
+    <ul>
+      <li><strong>Task 1:</strong> Visit /etc — note 3 config files and what service they configure</li>
+      <li><strong>Task 2:</strong> Run <code style="font-family:'Fira Code';font-size:.8rem">df -h /var</code> — note current disk usage percentage</li>
+      <li><strong>Task 3:</strong> Check /var/log — note the 3 largest log files by size (use <code style="font-family:'Fira Code';font-size:.8rem">du -sh /var/log/* | sort -rh | head -3</code>)</li>
+      <li><strong>Task 4:</strong> Read /proc/cpuinfo — note CPU model and number of cores</li>
+      <li><strong>Task 5:</strong> Run <code style="font-family:'Fira Code';font-size:.8rem">ls /sys/class/net/</code> — note all network interface names</li>
+      <li><strong>Task 6:</strong> Run <code style="font-family:'Fira Code';font-size:.8rem">which python3 bash nginx</code> — note which are installed and their paths</li>
+      <li><strong>Task 7:</strong> Check /opt — is any third-party software installed?</li>
+      <li><strong>Task 8:</strong> List /usr/local/bin — any custom scripts present?</li>
+      <li><strong>Task 9:</strong> Note /tmp contents — any leftover files from running processes?</li>
+      <li><strong>Task 10:</strong> Draw your own FHS map in a text file — <code style="font-family:'Fira Code';font-size:.8rem">nano ~/my_fhs_map.txt</code></li>
+    </ul>
+    <div class="accept" style="margin-top:16px;">Done kab maano: <code style="font-family:'Fira Code';font-size:.78rem">~/my_fhs_map.txt</code> mein apna FHS map hai aur 10 directories ka notes bana hai.</div>
+  </div>
+</section>
+
+<!-- CLOSING CARDS -->
+<section>
+  <div style="height:1px;background:rgba(255,255,255,.1);margin-bottom:26px;"></div>
+  <div class="topic-title">&#127937; Aaj Ka Summary</div>
+  <div class="closing-grid">
+    <div class="cc takeaway"><div class="icon">&#128161;</div><div class="title">Today's Takeaway</div><div class="body">FHS is the map of Linux — knowing it cuts config-hunting from 20 minutes to 5 seconds. Every senior engineer knows exactly which directory to check first for any task.</div></div>
+    <div class="cc interview"><div class="icon">&#127919;</div><div class="title">Today's Interview Question</div><div class="body">"Where would you find system logs?" → /var/log/. "What's in /etc?" → System-wide configuration files — nginx, ssh, fstab, passwd, hosts.</div></div>
+    <div class="cc assign"><div class="icon">&#128203;</div><div class="title">Today's Assignment</div><div class="body">Open /var/log/syslog and find the last 5 error messages: <code style="font-family:'Fira Code';font-size:.78rem">grep -i "error" /var/log/syslog | tail -5</code></div></div>
+    <div class="cc challenge"><div class="icon">&#128640;</div><div class="title">Today's Challenge</div><div class="body">Write a one-liner to find all .conf files in /etc modified in last 7 days: <code style="font-family:'Fira Code';font-size:.76rem">find /etc -name "*.conf" -mtime -7 -type f</code></div></div>
+    <div class="cc mistake"><div class="icon">&#9888;&#65039;</div><div class="title">Today's Mistake</div><div class="body">Storing persistent data in /tmp — it gets wiped on reboot! Use <code style="font-family:'Fira Code';font-size:.8rem">/var/lib/appname/</code> for any data that must survive a reboot.</div></div>
+    <div class="cc protip"><div class="icon">&#128295;</div><div class="title">Today's Pro Tip</div><div class="body">Production disk alerts are almost always /var filling up — set up monitoring on /var separately from /. A full /var/log silently kills services before / hits 100%.</div></div>
+  </div>
+</section>
+
+</div><!-- /tab-lesson -->
+
+<!-- ══════════════ TAB 2 — CHEAT SHEET ══════════════ -->
+<div class="tab-pane" id="tab-cheatsheet">
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="jagu"><img src="../assets/images/jagu-character.svg" alt="Jagu" class="jagu-img"></div>
+      <span class="char-name">Jagu</span>
+    </div>
+    <div class="speech-bubble" style="border-color:var(--chalk-blue)">"Golu, print karke screen pe chipka lo! <span class="chalk-text">Ye 4 tables 90% FHS questions cover karti hain.</span>"</div>
+  </div>
+
+  <div class="cs-title">Critical Directories Quick Reference</div>
+  <table class="cmd-table">
+    <thead><tr><th>Directory</th><th>Purpose</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td>/etc</td><td>System-wide configuration (static, human-edited)</td><td>nginx.conf, sshd_config, fstab, hosts, passwd</td></tr>
+      <tr><td>/var</td><td>Variable runtime data (changes automatically)</td><td>logs, databases, spool, cache</td></tr>
+      <tr><td>/var/log</td><td>All system and application logs</td><td>syslog, auth.log, nginx/access.log</td></tr>
+      <tr><td>/home/user</td><td>User personal data and config</td><td>.bashrc, .ssh/, documents</td></tr>
+      <tr><td>/root</td><td>Root user's home (NOT filesystem root!)</td><td>.bashrc, .ssh/ for root</td></tr>
+      <tr><td>/tmp</td><td>Temporary files — CLEARED on reboot</td><td>mktemp files, session data</td></tr>
+      <tr><td>/proc</td><td>Virtual FS — kernel process/system info (RAM only)</td><td>cpuinfo, meminfo, mounts, /proc/PID/</td></tr>
+      <tr><td>/sys</td><td>Virtual FS — kernel device tree and tunables (RAM only)</td><td>class/net/, block/, devices/</td></tr>
+      <tr><td>/bin → /usr/bin</td><td>Essential user binaries</td><td>ls, cat, grep, cp, mv, bash</td></tr>
+      <tr><td>/usr</td><td>Most user-space software (Unix System Resources)</td><td>/usr/bin, /usr/lib, /usr/share</td></tr>
+      <tr><td>/usr/local/bin</td><td>Custom/local scripts not managed by package manager</td><td>your deploy scripts, custom tools</td></tr>
+      <tr><td>/opt</td><td>Optional third-party software packages</td><td>chef, puppet, vendor apps</td></tr>
+      <tr><td>/lib → /usr/lib</td><td>Shared libraries (.so files)</td><td>libc.so, libssl.so</td></tr>
+      <tr><td>/var/lib</td><td>Persistent application state data</td><td>/var/lib/mysql, /var/lib/docker</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Log File Locations</div>
+  <table class="cmd-table">
+    <thead><tr><th>Log File</th><th>What It Contains</th><th>Common Use</th></tr></thead>
+    <tbody>
+      <tr><td>/var/log/syslog</td><td>General system messages (Debian/Ubuntu)</td><td>First place to check on system issues</td></tr>
+      <tr><td>/var/log/messages</td><td>General system messages (RHEL/CentOS)</td><td>RHEL equivalent of syslog</td></tr>
+      <tr><td>/var/log/auth.log</td><td>Authentication attempts, sudo, SSH logins</td><td>Security investigation, brute force detection</td></tr>
+      <tr><td>/var/log/kern.log</td><td>Kernel messages (hardware, driver errors)</td><td>Hardware issues, OOM killer events</td></tr>
+      <tr><td>/var/log/nginx/access.log</td><td>HTTP requests to nginx</td><td>Traffic analysis, 404 hunting</td></tr>
+      <tr><td>/var/log/nginx/error.log</td><td>Nginx errors and warnings</td><td>Debug 502/503 errors</td></tr>
+      <tr><td>/var/log/apache2/access.log</td><td>HTTP requests to Apache</td><td>Apache traffic analysis</td></tr>
+      <tr><td>/var/log/dpkg.log</td><td>Package install/remove history</td><td>When was X installed?</td></tr>
+      <tr><td>journalctl -xe</td><td>systemd journal (all services)</td><td>Modern systems: replaces syslog</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">/proc and /sys Key Paths</div>
+  <table class="cmd-table">
+    <thead><tr><th>Path</th><th>What It Shows</th></tr></thead>
+    <tbody>
+      <tr><td>/proc/cpuinfo</td><td>CPU model, cores, flags, cache</td></tr>
+      <tr><td>/proc/meminfo</td><td>RAM total, free, available, swap</td></tr>
+      <tr><td>/proc/mounts</td><td>Currently mounted filesystems</td></tr>
+      <tr><td>/proc/net/dev</td><td>Network interface statistics (bytes tx/rx)</td></tr>
+      <tr><td>/proc/loadavg</td><td>System load average (1m, 5m, 15m)</td></tr>
+      <tr><td>/proc/uptime</td><td>Seconds since boot</td></tr>
+      <tr><td>/proc/&lt;PID&gt;/cmdline</td><td>Command line that started process PID</td></tr>
+      <tr><td>/proc/&lt;PID&gt;/maps</td><td>Memory map of process PID</td></tr>
+      <tr><td>/proc/sys/net/ipv4/ip_forward</td><td>IP forwarding (1=on, 0=off) — writable!</td></tr>
+      <tr><td>/sys/class/net/</td><td>All network interface names</td></tr>
+      <tr><td>/sys/block/</td><td>All block devices (sda, sdb, nvme0n1)</td></tr>
+      <tr><td>/sys/class/thermal/</td><td>CPU temperature sensors</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cs-title">Software Installation Paths</div>
+  <table class="cmd-table">
+    <thead><tr><th>Path</th><th>Who Puts Stuff Here</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>/usr/bin/</td><td>OS package manager (apt/yum)</td><td>apt install nginx → /usr/bin/nginx</td></tr>
+      <tr><td>/usr/local/bin/</td><td>Admin — manual installs, custom scripts</td><td>compile from source, your scripts</td></tr>
+      <tr><td>/opt/appname/</td><td>Third-party vendors, enterprise tools</td><td>/opt/chef/, /opt/google/chrome/</td></tr>
+      <tr><td>/usr/lib/</td><td>OS package manager — shared libraries</td><td>/usr/lib/x86_64-linux-gnu/libc.so</td></tr>
+      <tr><td>/usr/local/lib/</td><td>Manual installs — libraries</td><td>pip install puts libs here sometimes</td></tr>
+      <tr><td>/var/lib/appname/</td><td>Service runtime — persistent data</td><td>/var/lib/mysql/, /var/lib/docker/</td></tr>
+      <tr><td>/etc/appname/</td><td>Admin — configuration files</td><td>/etc/nginx/, /etc/postgresql/</td></tr>
+      <tr><td>/var/log/appname/</td><td>Service runtime — log files</td><td>/var/log/nginx/, /var/log/mysql/</td></tr>
+    </tbody>
+  </table>
+
+</div><!-- /tab-cheatsheet -->
+
+<!-- ══════════════ TAB 3 — LAB ══════════════ -->
+<div class="tab-pane" id="tab-lab">
+
+  <div class="doodle-container">
+    <div class="doodle-wrapper">
+      <div class="golu"><img src="../assets/images/golu-character.svg" alt="Golu" class="golu-img"></div>
+      <span class="char-name">Golu</span>
+    </div>
+    <div class="speech-bubble">"Jagu, main ab <span class="chalk-text">khud FHS explore karunga</span> — ek ek step carefully!"</div>
+  </div>
+
+  <div class="content-box" style="border-left:4px solid var(--chalk-yellow);margin-bottom:22px;">
+    <h3 class="handwritten" style="color:var(--chalk-yellow);margin-bottom:8px;">Lab Goal</h3>
+    <p style="font-size:.9rem;color:rgba(255,255,255,.68);">FHS ke 6 major areas explore karo — /etc configs, /var/log disk usage, /proc virtual filesystem, binary locations, /opt installed software, aur apna notes file banao documenting jo dekha.</p>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">1</div><div class="lab-title">ls /etc — nginx aur SSH configs dhundo</div><input type="checkbox" class="lab-chk" onchange="updateProgress()"></div>
+    <pre><code><span class="cm"># List all /etc contents</span>
+<span class="cmd">ls</span> /etc/
+
+<span class="cm"># Find nginx config (if installed)</span>
+<span class="cmd">ls</span> /etc/nginx/ 2>/dev/null || <span class="cmd">echo</span> <span class="str">"nginx not installed"</span>
+
+<span class="cm"># SSH server config — look for PermitRootLogin and Port</span>
+<span class="cmd">grep</span> <span class="flg">-E</span> <span class="str">"^Port|^PermitRootLogin|^PasswordAuthentication"</span> /etc/ssh/sshd_config
+
+<span class="cm"># OS release info</span>
+<span class="cmd">cat</span> /etc/os-release</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; /etc mein ls dikha, SSH config ka Port aur PermitRootLogin setting dekhi.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">2</div><div class="lab-title">/var/log disk usage check karo (df -h /var)</div><input type="checkbox" class="lab-chk" onchange="updateProgress()"></div>
+    <pre><code><span class="cm"># /var disk usage</span>
+<span class="cmd">df</span> <span class="flg">-h</span> /var
+
+<span class="cm"># Top 5 largest log files</span>
+<span class="cmd">du</span> <span class="flg">-sh</span> /var/log/* 2>/dev/null | <span class="cmd">sort</span> <span class="flg">-rh</span> | <span class="cmd">head</span> <span class="flg">-5</span>
+
+<span class="cm"># Last 10 lines of syslog</span>
+<span class="cmd">tail</span> <span class="flg">-10</span> /var/log/syslog 2>/dev/null || <span class="cmd">journalctl</span> <span class="flg">-n</span> 10</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; /var ka disk usage percentage dekha. Largest log files identify kiye.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">3</div><div class="lab-title">/proc virtual filesystem explore karo</div><input type="checkbox" class="lab-chk" onchange="updateProgress()"></div>
+    <pre><code><span class="cm"># CPU info</span>
+<span class="cmd">grep</span> <span class="str">"model name"</span> /proc/cpuinfo | <span class="cmd">head</span> <span class="flg">-1</span>
+<span class="cmd">grep</span> <span class="flg">-c</span> <span class="str">"processor"</span> /proc/cpuinfo   <span class="cm"># number of CPU threads</span>
+
+<span class="cm"># Memory info</span>
+<span class="cmd">grep</span> <span class="flg">-E</span> <span class="str">"MemTotal|MemAvailable"</span> /proc/meminfo
+
+<span class="cm"># Uptime</span>
+<span class="cmd">cat</span> /proc/uptime
+
+<span class="cm"># Load average</span>
+<span class="cmd">cat</span> /proc/loadavg
+
+<span class="cm"># Network interfaces via sysfs</span>
+<span class="cmd">ls</span> /sys/class/net/
+
+<span class="cm"># IP forwarding status</span>
+<span class="cmd">cat</span> /proc/sys/net/ipv4/ip_forward</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; /proc se CPU model, RAM, uptime dekha. /sys/class/net se NICs list kiye.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">4</div><div class="lab-title">System binaries kahan hain — which aur whereis</div><input type="checkbox" class="lab-chk" onchange="updateProgress()"></div>
+    <pre><code><span class="cm"># Find binary locations</span>
+<span class="cmd">which</span> bash python3 nginx docker kubectl 2>/dev/null
+
+<span class="cm"># whereis gives binary + man page + source</span>
+<span class="cmd">whereis</span> bash
+
+<span class="cm"># Resolve symlinks to actual binary</span>
+<span class="cmd">readlink</span> <span class="flg">-f</span> $(which python3) 2>/dev/null
+
+<span class="cm"># Confirm /bin is symlink to /usr/bin on modern systems</span>
+<span class="cmd">ls</span> <span class="flg">-la</span> / | <span class="cmd">grep</span> <span class="str">"^l"</span>   <span class="cm"># lines starting with 'l' are symlinks</span>
+
+<span class="cm"># Check /usr/local/bin for custom tools</span>
+<span class="cmd">ls</span> /usr/local/bin/</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; Installed binaries ke paths dekhe. /bin symlink status verify kiya.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">5</div><div class="lab-title">/opt check karo — koi software installed hai?</div><input type="checkbox" class="lab-chk" onchange="updateProgress()"></div>
+    <pre><code><span class="cm"># Check /opt contents</span>
+<span class="cmd">ls</span> <span class="flg">-la</span> /opt/
+
+<span class="cm"># Check /var/lib — persistent app data</span>
+<span class="cmd">ls</span> /var/lib/ | <span class="cmd">head</span> <span class="flg">-15</span>
+
+<span class="cm"># Check /usr/share — documentation and shared data</span>
+<span class="cmd">ls</span> /usr/share/ | <span class="cmd">head</span> <span class="flg">-10</span>
+
+<span class="cm"># Shared libraries check</span>
+<span class="cmd">ls</span> /usr/lib/ | <span class="cmd">head</span> <span class="flg">-8</span>
+<span class="cmd">ldd</span> $(which ls) 2>/dev/null        <span class="cm"># libraries 'ls' needs</span></code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; /opt contents dekhe. /var/lib mein app data directories note kiye.</div>
+  </div>
+
+  <div class="lab-step">
+    <div class="lab-hdr"><div class="lab-num">6</div><div class="lab-title">Notes file banao — 5 findings document karo</div><input type="checkbox" class="lab-chk" onchange="updateProgress()"></div>
+    <pre><code><span class="cm"># Notes file create karo (>> se append — overwrite nahi!)</span>
+<span class="cmd">echo</span> <span class="str">"=== L04 FHS Lab Notes $(date) ==="</span> >> ~/devops_notes.txt
+
+<span class="cm"># 5 findings document karo (apni values fill in karo)</span>
+<span class="cmd">echo</span> <span class="str">"1. OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2)"</span> >> ~/devops_notes.txt
+<span class="cmd">echo</span> <span class="str">"2. CPU: $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)"</span> >> ~/devops_notes.txt
+<span class="cmd">echo</span> <span class="str">"3. /var disk usage: $(df -h /var | tail -1 | awk '{print $5}')"</span> >> ~/devops_notes.txt
+<span class="cmd">echo</span> <span class="str">"4. Network interfaces: $(ls /sys/class/net/ | tr '\n' ' ')"</span> >> ~/devops_notes.txt
+<span class="cmd">echo</span> <span class="str">"5. IP forwarding: $(cat /proc/sys/net/ipv4/ip_forward)"</span> >> ~/devops_notes.txt
+
+<span class="cm"># Verify notes file</span>
+<span class="cmd">cat</span> ~/devops_notes.txt</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <div class="accept">&#10003; ~/devops_notes.txt mein L04 FHS findings hain. >> se append hua, overwrite nahi!</div>
+  </div>
+
+  <div class="lab-prog-wrap">
+    <div style="font-size:1.4rem">&#127942;</div>
+    <div style="flex:1;">
+      <div style="font-family:'Architects Daughter';font-size:1.05rem;margin-bottom:6px">Lab Progress</div>
+      <div class="lab-bar"><div class="lab-fill" id="lab-fill"></div></div>
+    </div>
+    <div style="font-family:'Fira Code';font-size:.83rem;color:rgba(255,255,255,.45)" id="lab-count">0 / 6</div>
+  </div>
+
+</div><!-- /tab-lab -->
+
+<!-- FOOTER -->
+<div class="footer">
+  <p>#LearnDevOps · M01 · U01 · L04 — File System Hierarchy · By Aryashree Pritikrishna</p>
+  <a href="https://github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap">github.com/aryashreep/ai-powered-devops-platform-engineering-roadmap</a>
+</div>
+
+<!-- LESSON NAVIGATION -->
+<div class="lesson-nav">
+  <div class="nav-inner">
+    <a href="../day-02/L02-essential-commands.html" class="nav-btn prev">&larr; Day 2 &mdash; Essential Commands</a>
+    <a href="../../index.html" class="nav-btn up">&#8593; Curriculum</a>
+    <a href="../day-05/L03-text-files-and-redirection.html" class="nav-btn next">Day 5 &mdash; Text Files &amp; Redirection &rarr;</a>
+  </div>
+</div>
+
+</div><!-- /blackboard -->
+
+<script>
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+  function copyCode(btn) {
+    const pre  = btn.closest('pre');
+    const text = (pre.querySelector('code') || pre).innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Done!';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 2000);
+    });
+  }
+  function toggleIQ(el) { el.classList.toggle('open'); }
+  function quizAnswer(btn, correct) {
+    document.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = null;
+      b.style.cursor = 'default';
+    });
+    if (correct) {
+      btn.classList.add('correct');
+      document.getElementById('quiz-correct').classList.add('show');
+    } else {
+      btn.classList.add('wrong');
+      document.getElementById('quiz-wrong').classList.add('show');
+      document.querySelectorAll('.quiz-opt').forEach(b => {
+        if (b.onclick === null && b.textContent.startsWith('B)')) b.classList.add('correct');
+      });
+    }
+  }
+  function updateProgress() {
+    const boxes = document.querySelectorAll('#tab-lab .lab-chk');
+    const done  = Array.from(boxes).filter(b => b.checked).length;
+    document.getElementById('lab-fill').style.width  = Math.round(done/boxes.length*100) + '%';
+    document.getElementById('lab-count').textContent = done + ' / ' + boxes.length;
+  }
+
+  // ─── Back to top ──────────────────────────────────────────────
+  (function() {
+    var btn = document.createElement('button');
+    btn.className = 'to-top';
+    btn.innerHTML = '&#8593;';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.onclick = function() { window.scrollTo({ top:0, behavior:'smooth' }); };
+    document.body.appendChild(btn);
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        window.requestAnimationFrame(function() {
+          btn.classList.toggle('visible', window.scrollY > 400);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+  })();
+
+</script>
+</body>
+</html>
